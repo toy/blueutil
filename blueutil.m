@@ -13,38 +13,105 @@
 
 #import <Foundation/Foundation.h>
 
-inline int BTPowerState() {
-	return IOBluetoothPreferenceGetControllerPowerState();
-}
+// private methods
+int IOBluetoothPreferencesAvailable();
 
-int BTSetPowerState(int powerState) {
-	IOBluetoothPreferenceSetControllerPowerState(powerState);
+int IOBluetoothPreferenceGetControllerPowerState();
+void IOBluetoothPreferenceSetControllerPowerState(int state);
 
-	usleep(2000000); // wait until BT has been set
-	if (BTPowerState() != powerState) {
-		printf("Error: unable to turn Bluetooth %s\n", powerState ? "on" : "off");
+int IOBluetoothPreferenceGetDiscoverableState();
+void IOBluetoothPreferenceSetDiscoverableState(int state);
+
+// dry
+int BTSetParamState(int state, int (*getter)(), void (*setter)(int), char *paramDescription) {
+	if (state == getter()) {
+		return EXIT_SUCCESS;
+	} else {
+		setter(state);
+
+		for (int i = 0; i < 16; i++) {
+			usleep(250000);
+			if (state == getter()) {
+				return EXIT_SUCCESS;
+			}
+		}
+		printf("Error: unable to turn %s %s in 4 seconds\n", paramDescription, state ? "on" : "off");
 		return EXIT_FAILURE;
 	}
+}
 
-	return EXIT_SUCCESS;
+// short names
+typedef int (*getterFunc)();
+typedef int (*setterFunc)(int);
+
+#define BTAvaliable IOBluetoothPreferencesAvailable
+
+#define BTPowerState IOBluetoothPreferenceGetControllerPowerState
+int BTSetPowerState(int state) {
+	return BTSetParamState(state, BTPowerState, IOBluetoothPreferenceSetControllerPowerState, "Bluetooth");
+}
+
+#define BTDiscoverableState IOBluetoothPreferenceGetDiscoverableState
+int BTSetDiscoverableState(int state) {
+	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "Discoverable");
+}
+
+void printHelp() {
+	fprintf(stderr,
+					"blueutil - show state\n" \
+					"blueutil power|discoverable - show state 1 or 0\n" \
+					"blueutil power|discoverable 1|0 - set state\n");
 }
 
 int main(int argc, const char * argv[]) {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	int result = EXIT_SUCCESS;
+	int result = EXIT_FAILURE;
 
-	if (!IOBluetoothPreferencesAvailable()) {
-		printf("Error: Bluetooth not available");
-		result = EXIT_FAILURE;
-	} else if (argc == 2 && strcmp(argv[1], "status") == 0) {
-		printf("Status: %s\n", BTPowerState() ? "on" : "off");
-	} else if (argc == 2 && strcmp(argv[1], "on") == 0) {
-		result = BTSetPowerState(1);
-	} else if (argc == 2 && strcmp(argv[1], "off") == 0) {
-		result = BTSetPowerState(0);
+	if (!BTAvaliable()) {
+		fprintf(stderr, "Error: Bluetooth not available!\n");
 	} else {
-		printf("Usage: %s [status|on|off]\n", argv[0]);
-		result = EXIT_FAILURE;
+		switch (argc) {
+			case 1: {
+				printf("Power: %d\nDiscoverable: %d\n", BTPowerState(), BTDiscoverableState());
+				result = EXIT_SUCCESS;
+				break;
+			}
+			case 2:
+			case 3: {
+				getterFunc getter = NULL;
+				setterFunc setter = NULL;
+
+				if (strcmp("power", argv[1]) == 0) {
+					getter = BTPowerState;
+					setter = BTSetPowerState;
+				} else if (strcmp("discoverable", argv[1]) == 0) {
+					getter = BTDiscoverableState;
+					setter = BTSetDiscoverableState;
+				} else {
+					printHelp();
+					break;
+				}
+
+				if (argc == 2) {
+					printf("%d\n", getter());
+					result = EXIT_SUCCESS;
+				} else {
+					if (strcmp("1", argv[2]) == 0) {
+						result = setter(1);
+					} else if (strcmp("0", argv[2]) == 0) {
+						result = setter(0);
+					} else {
+						printHelp();
+						break;
+					}
+				}
+				break;
+			}
+			default: {
+				printHelp();
+				break;
+			}
+		}
 	}
 
 	[pool release];
