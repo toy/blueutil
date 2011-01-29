@@ -10,7 +10,6 @@
 		86885D8B0A09577A000379F8 /* IOBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 86885D8A0A09577A000379F8 /* IOBluetooth.framework */; };
 		8DD76F9A0486AA7600D96B5E /* blueutil.m in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* blueutil.m */; settings = {ATTRIBUTES = (); }; };
 		8DD76F9C0486AA7600D96B5E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
-		8DD76F9F0486AA7600D96B5E /* blueutil.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C6859EA3029092ED04C91782 /* blueutil.1 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -20,7 +19,6 @@
 			dstPath = /usr/share/man/man1/;
 			dstSubfolderSpec = 0;
 			files = (
-				8DD76F9F0486AA7600D96B5E /* blueutil.1 in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -31,7 +29,6 @@
 		08FB779EFE84155DC02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		86885D8A0A09577A000379F8 /* IOBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOBluetooth.framework; path = /System/Library/Frameworks/IOBluetooth.framework; sourceTree = "<absolute>"; };
 		8DD76FA10486AA7600D96B5E /* blueutil */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = blueutil; sourceTree = BUILT_PRODUCTS_DIR; };
-		C6859EA3029092ED04C91782 /* blueutil.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = blueutil.1; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,7 +48,6 @@
 			isa = PBXGroup;
 			children = (
 				08FB7795FE84155DC02AAC07 /* Source */,
-				C6859EA2029092E104C91782 /* Documentation */,
 				08FB779DFE84155DC02AAC07 /* External Frameworks and Libraries */,
 				1AB674ADFE9D54B511CA2CBB /* Products */,
 			);
@@ -83,14 +79,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		C6859EA2029092E104C91782 /* Documentation */ = {
-			isa = PBXGroup;
-			children = (
-				C6859EA3029092ED04C91782 /* blueutil.1 */,
-			);
-			name = Documentation;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -119,7 +107,6 @@
 			isa = PBXProject;
 			buildConfigurationList = 1DEB927808733DD40010E9CD /* Build configuration list for PBXProject "blueutil" */;
 			compatibilityVersion = "Xcode 2.4";
-			developmentRegion = English;
 			hasScannedForEncodings = 1;
 			knownRegions = (
 				English,
