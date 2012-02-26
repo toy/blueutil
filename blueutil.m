@@ -1,15 +1,13 @@
-/*
- * blueutil
- * Command-line utility to control Bluetooth.
- * Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
- * http://www.frederikseiffert.de/blueutil
- *
- * This software is public domain. It is provided without any warranty whatsoever,
- * and may be modified or used without attribution.
- *
- * Written by Frederik Seiffert <ego@frederikseiffert.de>
- * Last change: 2009-10-30
- */
+// blueutil
+// Command-line utility to control Bluetooth.
+// Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
+// http://www.frederikseiffert.de/blueutil
+//
+// This software is public domain. It is provided without any warranty whatsoever,
+// and may be modified or used without attribution.
+//
+// Written by Frederik Seiffert <ego@frederikseiffert.de>
+// Last change: 2009-10-30
 
 #import <Foundation/Foundation.h>
 
