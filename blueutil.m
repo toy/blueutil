@@ -21,20 +21,14 @@ int IOBluetoothPreferenceGetDiscoverableState();
 void IOBluetoothPreferenceSetDiscoverableState(int state);
 
 // dry
-int BTSetParamState(int state, int (*getter)(), void (*setter)(int), char *paramDescription) {
+int BTSetParamState(int state, int (*getter)(), void (*setter)(int)) {
 	if (state == getter()) {
 		return EXIT_SUCCESS;
 	} else {
 		setter(state);
 
-		for (int i = 0; i < 16; i++) {
-			usleep(250000);
-			if (state == getter()) {
-				return EXIT_SUCCESS;
-			}
-		}
-		printf("Error: unable to turn %s %s in 4 seconds\n", paramDescription, state ? "on" : "off");
-		return EXIT_FAILURE;
+		usleep(1000000); // Just wait, checking getter even in 10 seconds gives old result
+		return EXIT_SUCCESS;
 	}
 }
 
@@ -46,12 +40,12 @@ typedef int (*setterFunc)(int);
 
 #define BTPowerState IOBluetoothPreferenceGetControllerPowerState
 int BTSetPowerState(int state) {
-	return BTSetParamState(state, BTPowerState, IOBluetoothPreferenceSetControllerPowerState, "Bluetooth");
+	return BTSetParamState(state, BTPowerState, IOBluetoothPreferenceSetControllerPowerState);
 }
 
 #define BTDiscoverableState IOBluetoothPreferenceGetDiscoverableState
 int BTSetDiscoverableState(int state) {
-	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "Discoverable");
+	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState);
 }
 
 void printHelp() {
