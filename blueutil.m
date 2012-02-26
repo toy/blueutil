@@ -7,7 +7,8 @@
 // and may be modified or used without attribution.
 //
 // Written by Frederik Seiffert <ego@frederikseiffert.de>
-// Last change: 2009-10-30
+
+#define VERSION "1.0.0"
 
 #import <Foundation/Foundation.h>
 
@@ -50,9 +51,10 @@ int BTSetDiscoverableState(int state) {
 
 void printHelp() {
 	fprintf(stderr,
+					"blueutil v%s\n\n" \
 					"blueutil - show state\n" \
 					"blueutil power|discoverable - show state 1 or 0\n" \
-					"blueutil power|discoverable 1|0 - set state\n");
+					"blueutil power|discoverable 1|0 - set state\n", VERSION);
 }
 
 int main(int argc, const char * argv[]) {
