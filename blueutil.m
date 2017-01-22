@@ -64,32 +64,27 @@ void printHelp() {
 }
 
 int main(int argc, const char * argv[]) {
-	int result = EXIT_FAILURE;
-
 	if (!BTAvaliable()) {
-		fprintf(stderr, "Error: Bluetooth not available!\n");
+		eputs("Error: Bluetooth not available!");
+		return EXIT_FAILURE;
 	} else {
 		switch (argc) {
 			case 1: {
 				printf("Power: %d\nDiscoverable: %d\n", BTPowerState(), BTDiscoverableState());
-				result = EXIT_SUCCESS;
-				break;
+				return EXIT_SUCCESS;
 			}
 			case 2: {
 				if (strcmp("status", argv[1]) == 0) {
 					printf("Status: %s\n", BTPowerState() ? "on" : "off");
-					result = EXIT_SUCCESS;
-					break;
+					return EXIT_SUCCESS;
 				}
 				if (strcmp("on", argv[1]) == 0) {
 					BTSetPowerState(1);
-					result = EXIT_SUCCESS;
-					break;
+					return EXIT_SUCCESS;
 				}
 				if (strcmp("off", argv[1]) == 0) {
 					BTSetPowerState(0);
-					result = EXIT_SUCCESS;
-					break;
+					return EXIT_SUCCESS;
 				}
 			}
 			case 3: {
@@ -104,30 +99,27 @@ int main(int argc, const char * argv[]) {
 					setter = BTSetDiscoverableState;
 				} else {
 					printHelp();
-					break;
+					return EXIT_FAILURE;
 				}
 
 				if (argc == 2) {
 					printf("%d\n", getter());
-					result = EXIT_SUCCESS;
+					return EXIT_SUCCESS;
 				} else {
 					if (strcmp("1", argv[2]) == 0) {
-						result = setter(1);
+						return setter(1);
 					} else if (strcmp("0", argv[2]) == 0) {
-						result = setter(0);
+						return setter(0);
 					} else {
 						printHelp();
-						break;
+						return EXIT_FAILURE;
 					}
 				}
-				break;
 			}
 			default: {
 				printHelp();
-				break;
+				return EXIT_FAILURE;
 			}
 		}
 	}
-
-	return result;
 }
