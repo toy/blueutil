@@ -58,6 +58,7 @@ void printHelp(FILE *io) {
 	io_puts(io, "blueutil v"VERSION);
 	io_puts(io, "");
 	io_puts(io, "blueutil help - this help");
+	io_puts(io, "blueutil version - show version");
 	io_puts(io, "");
 	io_puts(io, "blueutil - show state");
 	io_puts(io, "blueutil p[ower]|d[iscoverable] - show state 1 or 0");
@@ -82,6 +83,10 @@ int main(int argc, const char * argv[]) {
 		case 2: {
 			if (strcmp("help", argv[1]) == 0) {
 				printHelp(stdout);
+				return EXIT_SUCCESS;
+			}
+			if (strcmp("version", argv[1]) == 0) {
+				io_puts(stdout, VERSION);
 				return EXIT_SUCCESS;
 			}
 			if (strcmp("status", argv[1]) == 0) {
