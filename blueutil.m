@@ -57,18 +57,20 @@ bool BTSetDiscoverableState(int state) {
 void printHelp(FILE *io) {
 	io_puts(io, "blueutil v"VERSION);
 	io_puts(io, "");
-	io_puts(io, "blueutil help - this help");
-	io_puts(io, "blueutil version - show version");
+	io_puts(io, "blueutil h[elp] - this help");
+	io_puts(io, "blueutil v[ersion] - show version");
 	io_puts(io, "");
 	io_puts(io, "blueutil - show state");
 	io_puts(io, "blueutil p[ower]|d[iscoverable] - show state 1 or 0");
 	io_puts(io, "blueutil p[ower]|d[iscoverable] 1|0 - set state");
 	io_puts(io, "");
 	io_puts(io, "Also original style arguments:");
-	io_puts(io, "blueutil status - show status");
+	io_puts(io, "blueutil s[tatus] - show status");
 	io_puts(io, "blueutil on - power on");
 	io_puts(io, "blueutil off - power off");
 }
+
+#define is_abbr_arg(name, arg) (strncmp((name), (arg), strlen(arg) || 1) == 0)
 
 int main(int argc, const char * argv[]) {
 	if (!BTAvaliable()) {
@@ -81,15 +83,15 @@ int main(int argc, const char * argv[]) {
 			return EXIT_SUCCESS;
 		}
 		case 2: {
-			if (strcmp("help", argv[1]) == 0) {
+			if (is_abbr_arg("help", argv[1])) {
 				printHelp(stdout);
 				return EXIT_SUCCESS;
 			}
-			if (strcmp("version", argv[1]) == 0) {
+			if (is_abbr_arg("version", argv[1])) {
 				io_puts(stdout, VERSION);
 				return EXIT_SUCCESS;
 			}
-			if (strcmp("status", argv[1]) == 0) {
+			if (is_abbr_arg("status", argv[1])) {
 				printf("Status: %s\n", BTPowerState() ? "on" : "off");
 				return EXIT_SUCCESS;
 			}
@@ -104,10 +106,10 @@ int main(int argc, const char * argv[]) {
 			getterFunc getter = NULL;
 			setterFunc setter = NULL;
 
-			if (strncmp("power", argv[1], strlen(argv[1]) || 1) == 0) {
+			if (is_abbr_arg("power", argv[1])) {
 				getter = BTPowerState;
 				setter = BTSetPowerState;
-			} else if (strncmp("discoverable", argv[1], strlen(argv[1]) || 1) == 0) {
+			} else if (is_abbr_arg("discoverable", argv[1])) {
 				getter = BTDiscoverableState;
 				setter = BTSetDiscoverableState;
 			} else {
