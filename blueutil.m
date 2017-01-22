@@ -54,8 +54,8 @@ void printHelp() {
 	eputs("blueutil v"VERSION);
 	eputs("");
 	eputs("blueutil - show state");
-	eputs("blueutil power|discoverable - show state 1 or 0");
-	eputs("blueutil power|discoverable 1|0 - set state");
+	eputs("blueutil p[ower]|d[iscoverable] - show state 1 or 0");
+	eputs("blueutil p[ower]|d[iscoverable] 1|0 - set state");
 }
 
 int main(int argc, const char * argv[]) {
@@ -75,10 +75,10 @@ int main(int argc, const char * argv[]) {
 				getterFunc getter = NULL;
 				setterFunc setter = NULL;
 
-				if (strcmp("power", argv[1]) == 0) {
+				if (strncmp("power", argv[1], strlen(argv[1]) || 1) == 0) {
 					getter = BTPowerState;
 					setter = BTSetPowerState;
-				} else if (strcmp("discoverable", argv[1]) == 0) {
+				} else if (strncmp("discoverable", argv[1], strlen(argv[1]) || 1) == 0) {
 					getter = BTDiscoverableState;
 					setter = BTSetDiscoverableState;
 				} else {
