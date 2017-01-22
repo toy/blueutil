@@ -72,61 +72,60 @@ int main(int argc, const char * argv[]) {
 	if (!BTAvaliable()) {
 		eputs("Error: Bluetooth not available!");
 		return EXIT_FAILURE;
-	} else {
-		switch (argc) {
-			case 1: {
-				printf("Power: %d\nDiscoverable: %d\n", BTPowerState(), BTDiscoverableState());
+	}
+	switch (argc) {
+		case 1: {
+			printf("Power: %d\nDiscoverable: %d\n", BTPowerState(), BTDiscoverableState());
+			return EXIT_SUCCESS;
+		}
+		case 2: {
+			if (strcmp("help", argv[1]) == 0) {
+				printHelp();
 				return EXIT_SUCCESS;
 			}
-			case 2: {
-				if (strcmp("help", argv[1]) == 0) {
-					printHelp();
-					return EXIT_SUCCESS;
-				}
-				if (strcmp("status", argv[1]) == 0) {
-					printf("Status: %s\n", BTPowerState() ? "on" : "off");
-					return EXIT_SUCCESS;
-				}
-				if (strcmp("on", argv[1]) == 0) {
-					return BTSetPowerState(1) ? EXIT_SUCCESS : EXIT_FAILURE;
-				}
-				if (strcmp("off", argv[1]) == 0) {
-					return BTSetPowerState(0) ? EXIT_SUCCESS : EXIT_FAILURE;
-				}
+			if (strcmp("status", argv[1]) == 0) {
+				printf("Status: %s\n", BTPowerState() ? "on" : "off");
+				return EXIT_SUCCESS;
 			}
-			case 3: {
-				getterFunc getter = NULL;
-				setterFunc setter = NULL;
+			if (strcmp("on", argv[1]) == 0) {
+				return BTSetPowerState(1) ? EXIT_SUCCESS : EXIT_FAILURE;
+			}
+			if (strcmp("off", argv[1]) == 0) {
+				return BTSetPowerState(0) ? EXIT_SUCCESS : EXIT_FAILURE;
+			}
+		}
+		case 3: {
+			getterFunc getter = NULL;
+			setterFunc setter = NULL;
 
-				if (strncmp("power", argv[1], strlen(argv[1]) || 1) == 0) {
-					getter = BTPowerState;
-					setter = BTSetPowerState;
-				} else if (strncmp("discoverable", argv[1], strlen(argv[1]) || 1) == 0) {
-					getter = BTDiscoverableState;
-					setter = BTSetDiscoverableState;
+			if (strncmp("power", argv[1], strlen(argv[1]) || 1) == 0) {
+				getter = BTPowerState;
+				setter = BTSetPowerState;
+			} else if (strncmp("discoverable", argv[1], strlen(argv[1]) || 1) == 0) {
+				getter = BTDiscoverableState;
+				setter = BTSetDiscoverableState;
+			} else {
+				printHelp();
+				return EXIT_FAILURE;
+			}
+
+			if (argc == 2) {
+				printf("%d\n", getter());
+				return EXIT_SUCCESS;
+			} else {
+				if (strcmp("1", argv[2]) == 0) {
+					return setter(1) ? EXIT_SUCCESS : EXIT_FAILURE;
+				} else if (strcmp("0", argv[2]) == 0) {
+					return setter(0) ? EXIT_SUCCESS : EXIT_FAILURE;
 				} else {
 					printHelp();
 					return EXIT_FAILURE;
 				}
-
-				if (argc == 2) {
-					printf("%d\n", getter());
-					return EXIT_SUCCESS;
-				} else {
-					if (strcmp("1", argv[2]) == 0) {
-						return setter(1) ? EXIT_SUCCESS : EXIT_FAILURE;
-					} else if (strcmp("0", argv[2]) == 0) {
-						return setter(0) ? EXIT_SUCCESS : EXIT_FAILURE;
-					} else {
-						printHelp();
-						return EXIT_FAILURE;
-					}
-				}
 			}
-			default: {
-				printHelp();
-				return EXIT_FAILURE;
-			}
+		}
+		default: {
+			printHelp();
+			return EXIT_FAILURE;
 		}
 	}
 }
