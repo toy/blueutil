@@ -58,7 +58,6 @@ void printHelp() {
 }
 
 int main(int argc, const char * argv[]) {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	int result = EXIT_FAILURE;
 
 	if (!BTAvaliable()) {
@@ -108,6 +107,5 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 
-	[pool release];
 	return result;
 }
