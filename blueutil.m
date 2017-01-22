@@ -56,6 +56,11 @@ void printHelp() {
 	eputs("blueutil - show state");
 	eputs("blueutil p[ower]|d[iscoverable] - show state 1 or 0");
 	eputs("blueutil p[ower]|d[iscoverable] 1|0 - set state");
+	eputs("");
+	eputs("Also original style arguments:");
+	eputs("blueutil status - show status");
+	eputs("blueutil on - power on");
+	eputs("blueutil off - power off");
 }
 
 int main(int argc, const char * argv[]) {
@@ -70,7 +75,23 @@ int main(int argc, const char * argv[]) {
 				result = EXIT_SUCCESS;
 				break;
 			}
-			case 2:
+			case 2: {
+				if (strcmp("status", argv[1]) == 0) {
+					printf("Status: %s\n", BTPowerState() ? "on" : "off");
+					result = EXIT_SUCCESS;
+					break;
+				}
+				if (strcmp("on", argv[1]) == 0) {
+					BTSetPowerState(1);
+					result = EXIT_SUCCESS;
+					break;
+				}
+				if (strcmp("off", argv[1]) == 0) {
+					BTSetPowerState(0);
+					result = EXIT_SUCCESS;
+					break;
+				}
+			}
 			case 3: {
 				getterFunc getter = NULL;
 				setterFunc setter = NULL;
