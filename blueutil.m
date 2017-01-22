@@ -53,6 +53,8 @@ int BTSetDiscoverableState(int state) {
 void printHelp() {
 	eputs("blueutil v"VERSION);
 	eputs("");
+	eputs("blueutil help - this help");
+	eputs("");
 	eputs("blueutil - show state");
 	eputs("blueutil p[ower]|d[iscoverable] - show state 1 or 0");
 	eputs("blueutil p[ower]|d[iscoverable] 1|0 - set state");
@@ -74,6 +76,10 @@ int main(int argc, const char * argv[]) {
 				return EXIT_SUCCESS;
 			}
 			case 2: {
+				if (strcmp("help", argv[1]) == 0) {
+					printHelp();
+					return EXIT_SUCCESS;
+				}
 				if (strcmp("status", argv[1]) == 0) {
 					printf("Status: %s\n", BTPowerState() ? "on" : "off");
 					return EXIT_SUCCESS;
