@@ -22,31 +22,34 @@ int IOBluetoothPreferenceGetDiscoverableState();
 void IOBluetoothPreferenceSetDiscoverableState(int state);
 
 // dry
-int BTSetParamState(int state, int (*getter)(), void (*setter)(int)) {
-	if (state == getter()) {
-		return EXIT_SUCCESS;
-	} else {
-		setter(state);
+int BTSetParamState(int state, int (*getter)(), void (*setter)(int), char *name) {
+	if (state == getter()) return true;
 
-		usleep(1000000); // Just wait, checking getter even in 10 seconds gives old result
-		return EXIT_SUCCESS;
+	setter(state);
+
+	for (int i = 0; i < 101; i++) {
+		if (i) usleep(100000);
+		if (state == getter()) return true;
 	}
+
+	fprintf(stderr, "Failed to switch bluetooth %s %s in 10 seconds\n", name, state ? "on" : "off");
+	return false;
 }
 
 // short names
 typedef int (*getterFunc)();
-typedef int (*setterFunc)(int);
+typedef bool (*setterFunc)(int);
 
 #define BTAvaliable IOBluetoothPreferencesAvailable
 
 #define BTPowerState IOBluetoothPreferenceGetControllerPowerState
-int BTSetPowerState(int state) {
-	return BTSetParamState(state, BTPowerState, IOBluetoothPreferenceSetControllerPowerState);
+bool BTSetPowerState(int state) {
+	return BTSetParamState(state, BTPowerState, IOBluetoothPreferenceSetControllerPowerState, "power");
 }
 
 #define BTDiscoverableState IOBluetoothPreferenceGetDiscoverableState
-int BTSetDiscoverableState(int state) {
-	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState);
+bool BTSetDiscoverableState(int state) {
+	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable state");
 }
 
 #define eputs(string) fputs (string"\n", stderr)
@@ -85,12 +88,10 @@ int main(int argc, const char * argv[]) {
 					return EXIT_SUCCESS;
 				}
 				if (strcmp("on", argv[1]) == 0) {
-					BTSetPowerState(1);
-					return EXIT_SUCCESS;
+					return BTSetPowerState(1) ? EXIT_SUCCESS : EXIT_FAILURE;
 				}
 				if (strcmp("off", argv[1]) == 0) {
-					BTSetPowerState(0);
-					return EXIT_SUCCESS;
+					return BTSetPowerState(0) ? EXIT_SUCCESS : EXIT_FAILURE;
 				}
 			}
 			case 3: {
@@ -113,9 +114,9 @@ int main(int argc, const char * argv[]) {
 					return EXIT_SUCCESS;
 				} else {
 					if (strcmp("1", argv[2]) == 0) {
-						return setter(1);
+						return setter(1) ? EXIT_SUCCESS : EXIT_FAILURE;
 					} else if (strcmp("0", argv[2]) == 0) {
-						return setter(0);
+						return setter(0) ? EXIT_SUCCESS : EXIT_FAILURE;
 					} else {
 						printHelp();
 						return EXIT_FAILURE;
