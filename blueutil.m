@@ -49,12 +49,13 @@ int BTSetDiscoverableState(int state) {
 	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState);
 }
 
+#define eputs(string) fputs (string"\n", stderr)
 void printHelp() {
-	fprintf(stderr,
-					"blueutil v%s\n\n" \
-					"blueutil - show state\n" \
-					"blueutil power|discoverable - show state 1 or 0\n" \
-					"blueutil power|discoverable 1|0 - set state\n", VERSION);
+	eputs("blueutil v"VERSION);
+	eputs("");
+	eputs("blueutil - show state");
+	eputs("blueutil power|discoverable - show state 1 or 0");
+	eputs("blueutil power|discoverable 1|0 - set state");
 }
 
 int main(int argc, const char * argv[]) {
