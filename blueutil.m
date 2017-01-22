@@ -10,7 +10,7 @@
 
 #define VERSION "1.0.0"
 
-#import <Foundation/Foundation.h>
+#import <IOBluetooth/IOBluetooth.h>
 
 // private methods
 int IOBluetoothPreferencesAvailable();
