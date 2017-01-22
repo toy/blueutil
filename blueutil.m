@@ -52,25 +52,26 @@ bool BTSetDiscoverableState(int state) {
 	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable state");
 }
 
-#define eputs(string) fputs (string"\n", stderr)
-void printHelp() {
-	eputs("blueutil v"VERSION);
-	eputs("");
-	eputs("blueutil help - this help");
-	eputs("");
-	eputs("blueutil - show state");
-	eputs("blueutil p[ower]|d[iscoverable] - show state 1 or 0");
-	eputs("blueutil p[ower]|d[iscoverable] 1|0 - set state");
-	eputs("");
-	eputs("Also original style arguments:");
-	eputs("blueutil status - show status");
-	eputs("blueutil on - power on");
-	eputs("blueutil off - power off");
+#define io_puts(io, string) fputs (string"\n", io)
+
+void printHelp(FILE *io) {
+	io_puts(io, "blueutil v"VERSION);
+	io_puts(io, "");
+	io_puts(io, "blueutil help - this help");
+	io_puts(io, "");
+	io_puts(io, "blueutil - show state");
+	io_puts(io, "blueutil p[ower]|d[iscoverable] - show state 1 or 0");
+	io_puts(io, "blueutil p[ower]|d[iscoverable] 1|0 - set state");
+	io_puts(io, "");
+	io_puts(io, "Also original style arguments:");
+	io_puts(io, "blueutil status - show status");
+	io_puts(io, "blueutil on - power on");
+	io_puts(io, "blueutil off - power off");
 }
 
 int main(int argc, const char * argv[]) {
 	if (!BTAvaliable()) {
-		eputs("Error: Bluetooth not available!");
+		io_puts(stderr, "Error: Bluetooth not available!");
 		return EXIT_FAILURE;
 	}
 	switch (argc) {
@@ -80,7 +81,7 @@ int main(int argc, const char * argv[]) {
 		}
 		case 2: {
 			if (strcmp("help", argv[1]) == 0) {
-				printHelp();
+				printHelp(stdout);
 				return EXIT_SUCCESS;
 			}
 			if (strcmp("status", argv[1]) == 0) {
@@ -105,7 +106,7 @@ int main(int argc, const char * argv[]) {
 				getter = BTDiscoverableState;
 				setter = BTSetDiscoverableState;
 			} else {
-				printHelp();
+				printHelp(stderr);
 				return EXIT_FAILURE;
 			}
 
@@ -118,13 +119,13 @@ int main(int argc, const char * argv[]) {
 				} else if (strcmp("0", argv[2]) == 0) {
 					return setter(0) ? EXIT_SUCCESS : EXIT_FAILURE;
 				} else {
-					printHelp();
+					printHelp(stderr);
 					return EXIT_FAILURE;
 				}
 			}
 		}
 		default: {
-			printHelp();
+			printHelp(stderr);
 			return EXIT_FAILURE;
 		}
 	}
