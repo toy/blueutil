@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -Werror -framework IOBluetooth
+CFLAGS = -Wall -Wextra -framework IOBluetooth
 
 test: blueutil
 	./test
