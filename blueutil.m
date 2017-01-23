@@ -70,7 +70,10 @@ void printHelp(FILE *io) {
 	io_puts(io, "blueutil off - power off");
 }
 
-#define is_abbr_arg(name, arg) (strncmp((name), (arg), strlen(arg) || 1) == 0)
+static inline bool is_abbr_arg(const char* name, const char* arg) {
+	size_t length = strlen(arg);
+	return strncmp(name, arg, length ? length : 1) == 0;
+}
 
 int main(int argc, const char * argv[]) {
 	if (!BTAvaliable()) {
