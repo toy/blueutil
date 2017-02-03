@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 
+cat <<EOF
+WARNING! This test script will turn the bluetooth power and discoverability
+on and off. While it will try to restore the original state at the end of the
+test, it is recommended to have wired keyboard and pointing device at hand.
+You can skip the confirmation by piping yes to the script.
+EOF
+read -p "Please type y or Y followed by [ENTER] to proceed: "
+[[ $REPLY =~ ^[Yy]$ ]] || exit 1
+
 blueutil=./blueutil
 errors=
 
