@@ -8,7 +8,7 @@
 //
 // Written by Frederik Seiffert <ego@frederikseiffert.de>
 
-#define VERSION "1.1.0"
+#define VERSION "1.1.2"
 
 #import <IOBluetooth/IOBluetooth.h>
 
