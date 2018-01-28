@@ -15,9 +15,9 @@ clean:
 	$(RM) blueutil
 
 install: build
-	@echo $(INSTALL_PROGRAM) blueutil $(DESTDIR)$(bindir)/blueutil
+	$(INSTALL_PROGRAM) blueutil $(DESTDIR)$(bindir)/blueutil
 
 uninstall:
-	@echo $(RM) $(DESTDIR)$(bindir)/blueutil
+	$(RM) $(DESTDIR)$(bindir)/blueutil
 
 .PHONY: build test clean install uninstall
