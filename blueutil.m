@@ -49,7 +49,7 @@ bool BTSetPowerState(int state) {
 
 #define BTDiscoverableState IOBluetoothPreferenceGetDiscoverableState
 bool BTSetDiscoverableState(int state) {
-	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable state");
+	return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable");
 }
 
 #define io_puts(io, string) fputs (string"\n", io)
