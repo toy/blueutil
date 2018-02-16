@@ -27,7 +27,7 @@ int BTSetParamState(int state, int (*getter)(), void (*setter)(int), char *name)
 
 	setter(state);
 
-	for (int i = 0; i < 101; i++) {
+	for (int i = 0; i <= 100; i++) {
 		if (i) usleep(100000);
 		if (state == getter()) return true;
 	}
