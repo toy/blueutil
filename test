@@ -16,8 +16,7 @@ errors=
 
 status=$($blueutil)
 trap "{
-  $blueutil power $($blueutil power)
-  $blueutil discoverable $($blueutil discoverable)
+  $blueutil -p$($blueutil -p) -d$($blueutil -d)
   echo
   if [[ -n \$errors ]]; then
     echo -n \"\$errors\"
@@ -47,70 +46,61 @@ assert_match() {
   [[ $1 =~ $2 ]] && success || failure "$ANSI_BOLD""$BASH_LINENO""$ANSI_RESET: Expected \"$1\" to match \"$2\""
 }
 
-# Init
-$blueutil power 1
-$blueutil discoverable 1
-assert_eq "$($blueutil)" $'Power: 1\nDiscoverable: 1'
-$blueutil power 0
-$blueutil discoverable 0
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
-
 # Power
-$blueutil power 1
-assert_eq "$($blueutil)" $'Power: 1\nDiscoverable: 0'
+$blueutil -p1
+assert_eq "$($blueutil)" *'Power: 1'*
 
-$blueutil power 0
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
+$blueutil -p 0
+assert_eq "$($blueutil)" *'Power: 0'*
 
-# Power abbreviation
-$blueutil p 1
-assert_eq "$($blueutil)" $'Power: 1\nDiscoverable: 0'
+$blueutil --power=1
+assert_eq "$($blueutil)" *'Power: 1'*
+assert_eq "$($blueutil -p)" '1'
+assert_eq "$($blueutil --pow)" '1'
+assert_eq "$($blueutil --power)" '1'
 
-$blueutil p 0
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
+$blueutil --pow 0
+assert_eq "$($blueutil)" *'Power: 0'*
+assert_eq "$($blueutil -p)" '0'
+assert_eq "$($blueutil --pow)" '0'
+assert_eq "$($blueutil --power)" '0'
 
 # Discoverable
-$blueutil discoverable 1
+$blueutil -d1
+assert_eq "$($blueutil)" *'Discoverable: 1'*
+
+$blueutil -d 0
+assert_eq "$($blueutil)" *'Discoverable: 0'*
+
+$blueutil --discoverable=1
+assert_eq "$($blueutil)" *'Discoverable: 1'*
+assert_eq "$($blueutil -d)" '1'
+assert_eq "$($blueutil --dis)" '1'
+assert_eq "$($blueutil --discoverable)" '1'
+
+$blueutil --dis 0
+assert_eq "$($blueutil)" *'Discoverable: 0'*
+assert_eq "$($blueutil -d)" '0'
+assert_eq "$($blueutil --dis)" '0'
+assert_eq "$($blueutil --discoverable)" '0'
+
+# Combined
+$blueutil -p1 -d1
+assert_eq "$($blueutil)" $'Power: 1\nDiscoverable: 1'
+
+$blueutil -p0 -d1
 assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 1'
 
-$blueutil discoverable 0
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
-
-# Discoverable abbreviation
-$blueutil d 1
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 1'
-
-$blueutil d 0
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
-
-# Wrong abbreviation
-$blueutil pawer 1 &> /dev/null
-assert_eq "$?" 1
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
-
-$blueutil discoverabla 1 &> /dev/null
-assert_eq "$?" 1
-assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
-
-# Status
-assert_eq "$($blueutil status)" 'Status: off'
-$blueutil power 1
-assert_eq "$($blueutil status)" 'Status: on'
-$blueutil power 0
-assert_eq "$($blueutil status)" 'Status: off'
-
-# On
-$blueutil on
+$blueutil -pon -dOff
 assert_eq "$($blueutil)" $'Power: 1\nDiscoverable: 0'
 
-# Off
-$blueutil off
+$blueutil -pOFF -doFF
 assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
 
 # Help
-assert_eq "$($blueutil help)" *'- this help'*
-assert_eq "$($blueutil h)" *'- this help'*
+assert_eq "$($blueutil --help)" *'this help'*
+assert_eq "$($blueutil -h)"     *'this help'*
 
 # Version
-assert_match "$($blueutil version)" '^[0-9]+\.[0-9]+\.[0-9]+$'
-assert_match "$($blueutil v)" '^[0-9]+\.[0-9]+\.[0-9]+$'
+assert_match "$($blueutil --version)" '^[0-9]+\.[0-9]+\.[0-9]+$'
+assert_match "$($blueutil -v)"        '^[0-9]+\.[0-9]+\.[0-9]+$'

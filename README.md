@@ -1,17 +1,18 @@
 get/set bluetooth power and discoverable state
 
 ```
-blueutil h[elp] - this help
-blueutil v[ersion] - show version
+Usage:
+  blueutil [options]
 
-blueutil - show state
-blueutil p[ower]|d[iscoverable] - show state 1 or 0
-blueutil p[ower]|d[iscoverable] 1|0 - set state
+Without options outputs current state
 
-Also original style arguments:
-blueutil s[tatus] - show status
-blueutil on - power on
-blueutil off - power off
+    -p, --power                     output power state as 1 or 0
+    -p, --power 1|on|0|off          set power state
+    -d, --discoverable              output discoverable state as 1 or 0
+    -d, --discoverable 1|on|0|off   set discoverable state
+
+    -h, --help                      this help
+    -v, --version                   show version
 ```
 
 Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
