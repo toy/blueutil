@@ -21,8 +21,11 @@ void IOBluetoothPreferenceSetControllerPowerState(int state);
 int IOBluetoothPreferenceGetDiscoverableState();
 void IOBluetoothPreferenceSetDiscoverableState(int state);
 
-// dry
-int BTSetParamState(int state, int (*getter)(), void (*setter)(int), char *name) {
+// short names
+typedef int (*getterFunc)();
+typedef bool (*setterFunc)(int);
+
+int BTSetParamState(int state, getterFunc getter, void (*setter)(int), char *name) {
 	if (state == getter()) return true;
 
 	setter(state);
@@ -35,10 +38,6 @@ int BTSetParamState(int state, int (*getter)(), void (*setter)(int), char *name)
 	fprintf(stderr, "Failed to switch bluetooth %s %s in 10 seconds\n", name, state ? "on" : "off");
 	return false;
 }
-
-// short names
-typedef int (*getterFunc)();
-typedef bool (*setterFunc)(int);
 
 #define BTAvaliable IOBluetoothPreferencesAvailable
 
