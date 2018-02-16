@@ -16,4 +16,5 @@ blueutil off - power off
 
 Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
 
-Originally written by Frederik Seiffert <ego@frederikseiffert.de> <http://www.frederikseiffert.de/blueutil/>
+Originally written by Frederik Seiffert ego@frederikseiffert.de http://www.frederikseiffert.de/blueutil/
+Further development by Ivan Kuchin https://github.com/toy/blueutil

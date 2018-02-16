@@ -3,10 +3,13 @@
 // Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
 // http://www.frederikseiffert.de/blueutil
 //
-// This software is public domain. It is provided without any warranty whatsoever,
-// and may be modified or used without attribution.
+// This software is public domain. It is provided without any warranty
+// whatsoever, and may be modified or used without attribution.
 //
 // Written by Frederik Seiffert <ego@frederikseiffert.de>
+//
+// Further development by Ivan Kuchin
+// https://github.com/toy/blueutil
 
 #define VERSION "1.1.2"
 
