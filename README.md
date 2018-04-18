@@ -17,5 +17,7 @@ Without options outputs current state
 
 Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
 
+Opening Bluetooth preference pane always turns on discoverability if bluetooth power is on or if it is switched on when preference pane is open, this change of state is not reported by the function used by `blueutil`.
+
 Originally written by Frederik Seiffert ego@frederikseiffert.de http://www.frederikseiffert.de/blueutil/
 Further development by Ivan Kuchin https://github.com/toy/blueutil
