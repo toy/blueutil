@@ -66,13 +66,15 @@ void usage(FILE *io) {
 	io_puts(io, "");
 	io_puts(io, "Without options outputs current state");
 	io_puts(io, "");
-	io_puts(io, "    -p, --power                     output power state as 1 or 0");
-	io_puts(io, "    -p, --power 1|on|0|off          set power state");
-	io_puts(io, "    -d, --discoverable              output discoverable state as 1 or 0");
-	io_puts(io, "    -d, --discoverable 1|on|0|off   set discoverable state");
+	io_puts(io, "    -p, --power               output power state as 1 or 0");
+	io_puts(io, "    -p, --power STATE         set power state");
+	io_puts(io, "    -d, --discoverable        output discoverable state as 1 or 0");
+	io_puts(io, "    -d, --discoverable STATE  set discoverable state");
 	io_puts(io, "");
-	io_puts(io, "    -h, --help                      this help");
-	io_puts(io, "    -v, --version                   show version");
+	io_puts(io, "    -h, --help                this help");
+	io_puts(io, "    -v, --version             show version");
+	io_puts(io, "");
+	io_puts(io, "STATE can be one of: 1, on, 0, off, toggle");
 }
 
 // getopt_long doesn't consume optional argument separated by space
@@ -102,6 +104,13 @@ bool parse_state_arg(char *str, int *state) {
 		0 == strcasecmp(optarg, "off")
 	) {
 		if (state) *state = 0;
+		return true;
+	}
+
+	if (
+		0 == strcasecmp(optarg, "toggle")
+	) {
+		if (state) *state = -1;
 		return true;
 	}
 
@@ -174,6 +183,11 @@ int main(int argc, char *argv[]) {
 
 					int state;
 					parse_state_arg(optarg, &state);
+					if (state == -1) {
+						getterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
+
+						state = !getter();
+					}
 
 					if (!setter(state)) {
 						return EXIT_FAILURE;
