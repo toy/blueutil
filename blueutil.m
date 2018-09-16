@@ -90,25 +90,25 @@ void extend_optarg(int argc, char *argv[]) {
 	}
 }
 
-bool parse_state_arg(char *str, int *state) {
+bool parse_state_arg(char *arg, int *state) {
 	if (
-		0 == strcasecmp(str, "1") ||
-		0 == strcasecmp(str, "on")
+		0 == strcasecmp(arg, "1") ||
+		0 == strcasecmp(arg, "on")
 	) {
 		if (state) *state = 1;
 		return true;
 	}
 
 	if (
-		0 == strcasecmp(optarg, "0") ||
-		0 == strcasecmp(optarg, "off")
+		0 == strcasecmp(arg, "0") ||
+		0 == strcasecmp(arg, "off")
 	) {
 		if (state) *state = 0;
 		return true;
 	}
 
 	if (
-		0 == strcasecmp(optarg, "toggle")
+		0 == strcasecmp(arg, "toggle")
 	) {
 		if (state) *state = -1;
 		return true;
