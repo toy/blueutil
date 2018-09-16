@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
 				extend_optarg(argc, argv);
 
 				if (optarg && !parse_state_arg(optarg, NULL)) {
-					fprintf(stderr, "Unexpected value: %s", optarg);
+					fprintf(stderr, "Unexpected value: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
