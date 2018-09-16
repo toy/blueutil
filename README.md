@@ -6,13 +6,23 @@ Usage:
 
 Without options outputs current state
 
-    -p, --power                     output power state as 1 or 0
-    -p, --power 1|on|0|off          set power state
-    -d, --discoverable              output discoverable state as 1 or 0
-    -d, --discoverable 1|on|0|off   set discoverable state
+    -p, --power               output power state as 1 or 0
+    -p, --power STATE         set power state
+    -d, --discoverable        output discoverable state as 1 or 0
+    -d, --discoverable STATE  set discoverable state
 
-    -h, --help                      this help
-    -v, --version                   show version
+        --favourites          list favourite devices
+        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates
+        --paired              list paired devices
+        --recent [N]          list recent devices, 10 by default
+
+        --connect ADDRESS     create a connection to device with address
+        --disconnect ADDRESS  close the connection to device with address
+
+    -h, --help                this help
+    -v, --version             show version
+
+STATE can be one of: 1, on, 0, off, toggle
 ```
 
 Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
