@@ -72,6 +72,11 @@ void usage(FILE *io) {
 	io_puts(io, "    -d, --discoverable        output discoverable state as 1 or 0");
 	io_puts(io, "    -d, --discoverable STATE  set discoverable state");
 	io_puts(io, "");
+	io_puts(io, "        --favourites          list favourite devices");
+	io_puts(io, "        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates");
+	io_puts(io, "        --paired              list paired devices");
+	io_puts(io, "        --recent [N]          list recent devices, 10 by default");
+	io_puts(io, "");
 	io_puts(io, "        --connect ADDRESS     create a connection to device with address");
 	io_puts(io, "        --disconnect ADDRESS  close the connection to device with address");
 	io_puts(io, "");
@@ -144,6 +149,54 @@ bool check_device_address_arg(char *arg) {
 	}
 }
 
+bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
+	regex_t regex;
+
+	if (0 != regcomp(&regex, "^[[:digit:]]+$", REG_EXTENDED | REG_NOSUB)) {
+		fprintf(stderr, "Failed compiling regex");
+		exit(EXIT_FAILURE);
+	}
+
+	int result = regexec(&regex, arg, 0, NULL, 0);
+
+	regfree(&regex);
+
+	switch (result) {
+		case 0:
+			if (number) *number = strtoul(arg, NULL, 10);
+			return true;
+		case REG_NOMATCH:
+			return false;
+		default:
+			fprintf(stderr, "Failed matching regex");
+			exit(EXIT_FAILURE);
+	}
+}
+
+void list_devices(NSArray *devices) {
+	for (IOBluetoothDevice* device in devices) {
+		printf("address: %s", [[device addressString] UTF8String]);
+		if ([device isConnected]) {
+			printf(", connected (%s, %d dBm)", [device isIncoming] ? "slave" : "master", [device rawRSSI]);
+		} else {
+			printf(", not connected");
+		}
+		printf(", %s", [device isFavorite] ? "favourite" : "not favourite");
+		printf(", %s", [device isPaired] ? "paired" : "not paired");
+		printf(", name: \"%s\"", [[device name] UTF8String]);
+		printf(", recent access date: %s", [[[device recentAccessDate] description] UTF8String]);
+		printf("\n");
+	}
+}
+
+@interface DeviceInquiryRunLoopStopper : NSObject <IOBluetoothDeviceInquiryDelegate>
+@end
+@implementation DeviceInquiryRunLoopStopper
+- (void)deviceInquiryComplete:(__unused IOBluetoothDeviceInquiry *)sender error:(__unused IOReturn)error aborted:(__unused BOOL)aborted {
+	CFRunLoopStop(CFRunLoopGetCurrent());
+}
+@end
+
 int main(int argc, char *argv[]) {
 	if (!BTAvaliable()) {
 		io_puts(stderr, "Error: Bluetooth not available!");
@@ -159,6 +212,12 @@ int main(int argc, char *argv[]) {
 	static struct option long_options[] = {
 		{"power",           optional_argument, NULL, 'p'},
 		{"discoverable",    optional_argument, NULL, 'd'},
+
+		{"favourites",      no_argument,       NULL, 'F'},
+		{"inquiry",         optional_argument, NULL, 'I'},
+		{"paired",          no_argument,       NULL, 'P'},
+		{"recent",          optional_argument, NULL, 'R'},
+
 		{"connect",         required_argument, NULL, '1'},
 		{"disconnect",      required_argument, NULL, '0'},
 		{"help",            no_argument,       NULL, 'h'},
@@ -175,6 +234,19 @@ int main(int argc, char *argv[]) {
 
 				if (optarg && !parse_state_arg(optarg, NULL)) {
 					fprintf(stderr, "Unexpected value: %s\n", optarg);
+					return EXIT_FAILURE;
+				}
+
+				break;
+			case 'F':
+			case 'P':
+				break;
+			case 'I':
+			case 'R':
+				extend_optarg(argc, argv);
+
+				if (optarg && !parse_unsigned_long_arg(optarg, NULL)) {
+					fprintf(stderr, "Expected number, got: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
@@ -214,7 +286,6 @@ int main(int argc, char *argv[]) {
 			case 'p':
 			case 'd':
 				extend_optarg(argc, argv);
-
 				if (optarg) {
 					setterFunc setter = ch == 'p' ? BTSetPowerState : BTSetDiscoverableState;
 
@@ -236,6 +307,40 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
+			case 'F':
+				list_devices([IOBluetoothDevice favoriteDevices]);
+
+				break;
+			case 'P':
+				list_devices([IOBluetoothDevice pairedDevices]);
+
+				break;
+			case 'I': {
+				IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:[[DeviceInquiryRunLoopStopper alloc] init]];
+
+				extend_optarg(argc, argv);
+				if (optarg) {
+					unsigned long t;
+					parse_unsigned_long_arg(optarg, &t);
+					[inquirer setInquiryLength:t];
+				}
+
+				[inquirer start];
+				CFRunLoopRun();
+				[inquirer stop];
+
+				list_devices([inquirer foundDevices]);
+
+			} break;
+			case 'R': {
+				unsigned long n = 10;
+
+				extend_optarg(argc, argv);
+				if (optarg) parse_unsigned_long_arg(optarg, &n);
+
+				list_devices([IOBluetoothDevice recentDevices:n]);
+
+			} break;
 			case '1':
 			case '0': {
 				IOBluetoothDevice *device = [IOBluetoothDevice deviceWithAddressString:[NSString stringWithCString:optarg encoding:[NSString defaultCStringEncoding]]];
