@@ -75,13 +75,13 @@ assert_eq "$($blueutil)" *'Discoverable: 0'*
 $blueutil --discoverable=1
 assert_eq "$($blueutil)" *'Discoverable: 1'*
 assert_eq "$($blueutil -d)" '1'
-assert_eq "$($blueutil --dis)" '1'
+assert_eq "$($blueutil --discov)" '1'
 assert_eq "$($blueutil --discoverable)" '1'
 
-$blueutil --dis 0
+$blueutil --discov 0
 assert_eq "$($blueutil)" *'Discoverable: 0'*
 assert_eq "$($blueutil -d)" '0'
-assert_eq "$($blueutil --dis)" '0'
+assert_eq "$($blueutil --discov)" '0'
 assert_eq "$($blueutil --discoverable)" '0'
 
 # Combined

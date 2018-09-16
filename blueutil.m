@@ -16,6 +16,7 @@
 #import <IOBluetooth/IOBluetooth.h>
 
 #include <getopt.h>
+#include <regex.h>
 
 // private methods
 int IOBluetoothPreferencesAvailable();
@@ -71,6 +72,9 @@ void usage(FILE *io) {
 	io_puts(io, "    -d, --discoverable        output discoverable state as 1 or 0");
 	io_puts(io, "    -d, --discoverable STATE  set discoverable state");
 	io_puts(io, "");
+	io_puts(io, "        --connect ADDRESS     create a connection to device with address");
+	io_puts(io, "        --disconnect ADDRESS  close the connection to device with address");
+	io_puts(io, "");
 	io_puts(io, "    -h, --help                this help");
 	io_puts(io, "    -v, --version             show version");
 	io_puts(io, "");
@@ -117,6 +121,29 @@ bool parse_state_arg(char *arg, int *state) {
 	return false;
 }
 
+bool check_device_address_arg(char *arg) {
+	regex_t regex;
+
+	if (0 != regcomp(&regex, "^[0-9a-f]{2}([0-9a-f]{10}|(-[0-9a-f]{2}){5}|(:[0-9a-f]{2}){5})$", REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
+		fprintf(stderr, "Failed compiling regex");
+		exit(EXIT_FAILURE);
+	}
+
+	int result = regexec(&regex, arg, 0, NULL, 0);
+
+	regfree(&regex);
+
+	switch (result) {
+		case 0:
+			return true;
+		case REG_NOMATCH:
+			return false;
+		default:
+			fprintf(stderr, "Failed matching regex");
+			exit(EXIT_FAILURE);
+	}
+}
+
 int main(int argc, char *argv[]) {
 	if (!BTAvaliable()) {
 		io_puts(stderr, "Error: Bluetooth not available!");
@@ -132,6 +159,8 @@ int main(int argc, char *argv[]) {
 	static struct option long_options[] = {
 		{"power",           optional_argument, NULL, 'p'},
 		{"discoverable",    optional_argument, NULL, 'd'},
+		{"connect",         required_argument, NULL, '1'},
+		{"disconnect",      required_argument, NULL, '0'},
 		{"help",            no_argument,       NULL, 'h'},
 		{"version",         no_argument,       NULL, 'v'},
 		{NULL, 0, NULL, 0}
@@ -146,6 +175,14 @@ int main(int argc, char *argv[]) {
 
 				if (optarg && !parse_state_arg(optarg, NULL)) {
 					fprintf(stderr, "Unexpected value: %s\n", optarg);
+					return EXIT_FAILURE;
+				}
+
+				break;
+			case '1':
+			case '0':
+				if (!check_device_address_arg(optarg)) {
+					fprintf(stderr, "Unexpected address: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
@@ -199,6 +236,19 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
+			case '1':
+			case '0': {
+				IOBluetoothDevice *device = [IOBluetoothDevice deviceWithAddressString:[NSString stringWithCString:optarg encoding:[NSString defaultCStringEncoding]]];
+
+				if (!device) {
+					fprintf(stderr, "Device not found: %s\n", optarg);
+					return EXIT_FAILURE;
+				}
+
+				if ((ch == '1' ? [device openConnection] : [device closeConnection]) != kIOReturnSuccess) {
+					return EXIT_FAILURE;
+				}
+			} break;
 		}
 	}
 
