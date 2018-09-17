@@ -77,9 +77,10 @@ void usage(FILE *io) {
 	io_puts(io, "        --paired              list paired devices");
 	io_puts(io, "        --recent [N]          list recent devices, 10 by default");
 	io_puts(io, "");
-	io_puts(io, "        --info ADDRESS        show information about device with address");
-	io_puts(io, "        --connect ADDRESS     create a connection to device with address");
-	io_puts(io, "        --disconnect ADDRESS  close the connection to device with address");
+	io_puts(io, "        --info ADDR           show information about device with address");
+	io_puts(io, "        --is-connected ADDR   device with address connected state as 1 or 0");
+	io_puts(io, "        --connect ADDR        create a connection to device with address");
+	io_puts(io, "        --disconnect ADDR     close the connection to device with address");
 	io_puts(io, "");
 	io_puts(io, "    -h, --help                this help");
 	io_puts(io, "    -v, --version             show version");
@@ -231,6 +232,7 @@ int main(int argc, char *argv[]) {
 		{"recent",          optional_argument, NULL, 'R'},
 
 		{"info",            required_argument, NULL, 'i'},
+		{"is-connected",    required_argument, NULL, 'c'},
 		{"connect",         required_argument, NULL, '1'},
 		{"disconnect",      required_argument, NULL, '0'},
 
@@ -266,6 +268,7 @@ int main(int argc, char *argv[]) {
 
 				break;
 			case 'i':
+			case 'c':
 			case '1':
 			case '0':
 				if (!check_device_address_arg(optarg)) {
@@ -358,6 +361,10 @@ int main(int argc, char *argv[]) {
 			} break;
 			case 'i':
 				list_devices(@[get_device(optarg)]);
+
+				break;
+			case 'c':
+				printf("%d\n", [get_device(optarg) isConnected] ? 1 : 0);
 
 				break;
 			case '1':
