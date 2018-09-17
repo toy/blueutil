@@ -77,6 +77,7 @@ void usage(FILE *io) {
 	io_puts(io, "        --paired              list paired devices");
 	io_puts(io, "        --recent [N]          list recent devices, 10 by default");
 	io_puts(io, "");
+	io_puts(io, "        --info ADDRESS        show information about device with address");
 	io_puts(io, "        --connect ADDRESS     create a connection to device with address");
 	io_puts(io, "        --disconnect ADDRESS  close the connection to device with address");
 	io_puts(io, "");
@@ -173,6 +174,17 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
 	}
 }
 
+IOBluetoothDevice *get_device(char *address) {
+	IOBluetoothDevice *device = [IOBluetoothDevice deviceWithAddressString:[NSString stringWithCString:address encoding:[NSString defaultCStringEncoding]]];
+
+	if (!device) {
+		fprintf(stderr, "Device not found: %s\n", address);
+		exit(EXIT_FAILURE);
+	}
+
+	return device;
+}
+
 void list_devices(NSArray *devices) {
 	for (IOBluetoothDevice* device in devices) {
 		printf("address: %s", [[device addressString] UTF8String]);
@@ -218,8 +230,10 @@ int main(int argc, char *argv[]) {
 		{"paired",          no_argument,       NULL, 'P'},
 		{"recent",          optional_argument, NULL, 'R'},
 
+		{"info",            required_argument, NULL, 'i'},
 		{"connect",         required_argument, NULL, '1'},
 		{"disconnect",      required_argument, NULL, '0'},
+
 		{"help",            no_argument,       NULL, 'h'},
 		{"version",         no_argument,       NULL, 'v'},
 		{NULL, 0, NULL, 0}
@@ -251,6 +265,7 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
+			case 'i':
 			case '1':
 			case '0':
 				if (!check_device_address_arg(optarg)) {
@@ -341,19 +356,18 @@ int main(int argc, char *argv[]) {
 				list_devices([IOBluetoothDevice recentDevices:n]);
 
 			} break;
+			case 'i':
+				list_devices(@[get_device(optarg)]);
+
+				break;
 			case '1':
-			case '0': {
-				IOBluetoothDevice *device = [IOBluetoothDevice deviceWithAddressString:[NSString stringWithCString:optarg encoding:[NSString defaultCStringEncoding]]];
+				if ([get_device(optarg) openConnection] != kIOReturnSuccess) return EXIT_FAILURE;
 
-				if (!device) {
-					fprintf(stderr, "Device not found: %s\n", optarg);
-					return EXIT_FAILURE;
-				}
+				break;
+			case '0':
+				if ([get_device(optarg) closeConnection] != kIOReturnSuccess) return EXIT_FAILURE;
 
-				if ((ch == '1' ? [device openConnection] : [device closeConnection]) != kIOReturnSuccess) {
-					return EXIT_FAILURE;
-				}
-			} break;
+				break;
 		}
 	}
 

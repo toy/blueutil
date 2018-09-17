@@ -16,6 +16,7 @@ Without options outputs current state
         --paired              list paired devices
         --recent [N]          list recent devices, 10 by default
 
+        --info ADDRESS        show information about device with address
         --connect ADDRESS     create a connection to device with address
         --disconnect ADDRESS  close the connection to device with address
 
