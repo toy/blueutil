@@ -18,6 +18,8 @@
 #include <getopt.h>
 #include <regex.h>
 
+#define eprintf(...) fprintf(stderr, ##__VA_ARGS__)
+
 // private methods
 int IOBluetoothPreferencesAvailable();
 
@@ -41,7 +43,7 @@ int BTSetParamState(int state, getterFunc getter, void (*setter)(int), char *nam
 		if (state == getter()) return true;
 	}
 
-	fprintf(stderr, "Failed to switch bluetooth %s %s in 10 seconds\n", name, state ? "on" : "off");
+	eprintf("Failed to switch bluetooth %s %s in 10 seconds\n", name, state ? "on" : "off");
 	return false;
 }
 
@@ -132,7 +134,7 @@ bool check_device_address_arg(char *arg) {
 	regex_t regex;
 
 	if (0 != regcomp(&regex, "^[0-9a-f]{2}([0-9a-f]{10}|(-[0-9a-f]{2}){5}|(:[0-9a-f]{2}){5})$", REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
-		fprintf(stderr, "Failed compiling regex");
+		eprintf("Failed compiling regex");
 		exit(EXIT_FAILURE);
 	}
 
@@ -146,7 +148,7 @@ bool check_device_address_arg(char *arg) {
 		case REG_NOMATCH:
 			return false;
 		default:
-			fprintf(stderr, "Failed matching regex");
+			eprintf("Failed matching regex");
 			exit(EXIT_FAILURE);
 	}
 }
@@ -155,7 +157,7 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
 	regex_t regex;
 
 	if (0 != regcomp(&regex, "^[[:digit:]]+$", REG_EXTENDED | REG_NOSUB)) {
-		fprintf(stderr, "Failed compiling regex");
+		eprintf("Failed compiling regex");
 		exit(EXIT_FAILURE);
 	}
 
@@ -170,7 +172,7 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
 		case REG_NOMATCH:
 			return false;
 		default:
-			fprintf(stderr, "Failed matching regex");
+			eprintf("Failed matching regex");
 			exit(EXIT_FAILURE);
 	}
 }
@@ -249,7 +251,7 @@ int main(int argc, char *argv[]) {
 				extend_optarg(argc, argv);
 
 				if (optarg && !parse_state_arg(optarg, NULL)) {
-					fprintf(stderr, "Unexpected value: %s\n", optarg);
+					eprintf("Unexpected value: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
@@ -262,7 +264,7 @@ int main(int argc, char *argv[]) {
 				extend_optarg(argc, argv);
 
 				if (optarg && !parse_unsigned_long_arg(optarg, NULL)) {
-					fprintf(stderr, "Expected number, got: %s\n", optarg);
+					eprintf("Expected number, got: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
@@ -272,7 +274,7 @@ int main(int argc, char *argv[]) {
 			case '1':
 			case '0':
 				if (!check_device_address_arg(optarg)) {
-					fprintf(stderr, "Unexpected address: %s\n", optarg);
+					eprintf("Unexpected address: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
@@ -290,11 +292,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (optind < argc) {
-		fprintf(stderr, "Unexpected arguments: %s", argv[optind++]);
+		eprintf("Unexpected arguments: %s", argv[optind++]);
 		while (optind < argc) {
-			fprintf(stderr, ", %s", argv[optind++]);
+			eprintf(", %s", argv[optind++]);
 		}
-		fprintf(stderr, "\n");
+		eprintf("\n");
 		return EXIT_FAILURE;
 	}
 
