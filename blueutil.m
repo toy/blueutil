@@ -77,17 +77,18 @@ void usage(FILE *io) {
 	io_puts(io, "        --favourites          list favourite devices");
 	io_puts(io, "        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates");
 	io_puts(io, "        --paired              list paired devices");
-	io_puts(io, "        --recent [N]          list recent devices, 10 by default");
+	io_puts(io, "        --recent [N]          list recently used devices, 10 by default");
 	io_puts(io, "");
-	io_puts(io, "        --info ADDR           show information about device with address");
-	io_puts(io, "        --is-connected ADDR   device with address connected state as 1 or 0");
-	io_puts(io, "        --connect ADDR        create a connection to device with address");
-	io_puts(io, "        --disconnect ADDR     close the connection to device with address");
+	io_puts(io, "        --info ID             show information about device");
+	io_puts(io, "        --is-connected ID     connected state of device as 1 or 0");
+	io_puts(io, "        --connect ID          create a connection to device");
+	io_puts(io, "        --disconnect ID       close the connection to device");
 	io_puts(io, "");
 	io_puts(io, "    -h, --help                this help");
 	io_puts(io, "    -v, --version             show version");
 	io_puts(io, "");
 	io_puts(io, "STATE can be one of: 1, on, 0, off, toggle");
+	io_puts(io, "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices");
 }
 
 // getopt_long doesn't consume optional argument separated by space
@@ -177,12 +178,35 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
 	}
 }
 
-IOBluetoothDevice *get_device(char *address) {
-	IOBluetoothDevice *device = [IOBluetoothDevice deviceWithAddressString:[NSString stringWithCString:address encoding:[NSString defaultCStringEncoding]]];
+IOBluetoothDevice *get_device(char *id) {
+	NSString *nsId = [NSString stringWithCString:id encoding:[NSString defaultCStringEncoding]];
 
-	if (!device) {
-		fprintf(stderr, "Device not found: %s\n", address);
-		exit(EXIT_FAILURE);
+	IOBluetoothDevice *device = nil;
+
+	if (check_device_address_arg(id)) {
+		device = [IOBluetoothDevice deviceWithAddressString:nsId];
+
+		if (!device) {
+			fprintf(stderr, "Device not found by address: %s\n", id);
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		NSArray *recentDevices = [IOBluetoothDevice recentDevices:0];
+
+		if (!recentDevices) {
+			fprintf(stderr, "No recent devices to search for: %s\n", id);
+			exit(EXIT_FAILURE);
+		}
+
+		NSArray *byName = [recentDevices filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@", nsId]];
+		if (byName.count > 0) {
+			device = byName.firstObject;
+		}
+
+		if (!device) {
+			fprintf(stderr, "Device not found by name: %s\n", id);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	return device;
@@ -290,11 +314,6 @@ int main(int argc, char *argv[]) {
 			case arg_is_connected:
 			case arg_connect:
 			case arg_disconnect:
-				if (!check_device_address_arg(optarg)) {
-					eprintf("Unexpected address: %s\n", optarg);
-					return EXIT_FAILURE;
-				}
-
 				break;
 			case arg_version:
 				io_puts(stdout, VERSION);
