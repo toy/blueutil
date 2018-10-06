@@ -223,31 +223,48 @@ int main(int argc, char *argv[]) {
 		return EXIT_SUCCESS;
 	}
 
+	enum {
+		arg_power = 'p',
+		arg_discoverable = 'd',
+		arg_help = 'h',
+		arg_version = 'v',
+
+		arg_favourites = 256,
+		arg_inquiry,
+		arg_paired,
+		arg_recent,
+		arg_info,
+		arg_is_connected,
+		arg_connect,
+		arg_disconnect,
+	};
+
 	const char* optstring = "p::d::hv";
 	static struct option long_options[] = {
-		{"power",           optional_argument, NULL, 'p'},
-		{"discoverable",    optional_argument, NULL, 'd'},
+		{"power",           optional_argument, NULL, arg_power},
+		{"discoverable",    optional_argument, NULL, arg_discoverable},
 
-		{"favourites",      no_argument,       NULL, 'F'},
-		{"inquiry",         optional_argument, NULL, 'I'},
-		{"paired",          no_argument,       NULL, 'P'},
-		{"recent",          optional_argument, NULL, 'R'},
+		{"favourites",      no_argument,       NULL, arg_favourites},
+		{"inquiry",         optional_argument, NULL, arg_inquiry},
+		{"paired",          no_argument,       NULL, arg_paired},
+		{"recent",          optional_argument, NULL, arg_recent},
 
-		{"info",            required_argument, NULL, 'i'},
-		{"is-connected",    required_argument, NULL, 'c'},
-		{"connect",         required_argument, NULL, '1'},
-		{"disconnect",      required_argument, NULL, '0'},
+		{"info",            required_argument, NULL, arg_info},
+		{"is-connected",    required_argument, NULL, arg_is_connected},
+		{"connect",         required_argument, NULL, arg_connect},
+		{"disconnect",      required_argument, NULL, arg_disconnect},
 
-		{"help",            no_argument,       NULL, 'h'},
-		{"version",         no_argument,       NULL, 'v'},
+		{"help",            no_argument,       NULL, arg_help},
+		{"version",         no_argument,       NULL, arg_version},
+
 		{NULL, 0, NULL, 0}
 	};
 
 	int ch;
 	while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
 		switch (ch) {
-			case 'p':
-			case 'd':
+			case arg_power:
+			case arg_discoverable:
 				extend_optarg(argc, argv);
 
 				if (optarg && !parse_state_arg(optarg, NULL)) {
@@ -256,11 +273,11 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
-			case 'F':
-			case 'P':
+			case arg_favourites:
+			case arg_paired:
 				break;
-			case 'I':
-			case 'R':
+			case arg_inquiry:
+			case arg_recent:
 				extend_optarg(argc, argv);
 
 				if (optarg && !parse_unsigned_long_arg(optarg, NULL)) {
@@ -269,20 +286,20 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
-			case 'i':
-			case 'c':
-			case '1':
-			case '0':
+			case arg_info:
+			case arg_is_connected:
+			case arg_connect:
+			case arg_disconnect:
 				if (!check_device_address_arg(optarg)) {
 					eprintf("Unexpected address: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
 				break;
-			case 'v':
+			case arg_version:
 				io_puts(stdout, VERSION);
 				return EXIT_SUCCESS;
-			case 'h':
+			case arg_help:
 				usage(stdout);
 				return EXIT_SUCCESS;
 			default:
@@ -303,8 +320,8 @@ int main(int argc, char *argv[]) {
 	optind = 1;
 	while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
 		switch (ch) {
-			case 'p':
-			case 'd':
+			case arg_power:
+			case arg_discoverable:
 				extend_optarg(argc, argv);
 				if (optarg) {
 					setterFunc setter = ch == 'p' ? BTSetPowerState : BTSetDiscoverableState;
@@ -327,15 +344,15 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
-			case 'F':
+			case arg_favourites:
 				list_devices([IOBluetoothDevice favoriteDevices]);
 
 				break;
-			case 'P':
+			case arg_paired:
 				list_devices([IOBluetoothDevice pairedDevices]);
 
 				break;
-			case 'I': {
+			case arg_inquiry: {
 				IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:[[DeviceInquiryRunLoopStopper alloc] init]];
 
 				extend_optarg(argc, argv);
@@ -352,7 +369,7 @@ int main(int argc, char *argv[]) {
 				list_devices([inquirer foundDevices]);
 
 			} break;
-			case 'R': {
+			case arg_recent: {
 				unsigned long n = 10;
 
 				extend_optarg(argc, argv);
@@ -361,22 +378,22 @@ int main(int argc, char *argv[]) {
 				list_devices([IOBluetoothDevice recentDevices:n]);
 
 			} break;
-			case 'i':
+			case arg_info:
 				list_devices(@[get_device(optarg)]);
 
 				break;
-			case 'c':
+			case arg_is_connected:
 				printf("%d\n", [get_device(optarg) isConnected] ? 1 : 0);
 
 				break;
-			case '1':
+			case arg_connect:
 				if ([get_device(optarg) openConnection] != kIOReturnSuccess) {
 					eprintf("Failed to connect %s\n", optarg);
 					return EXIT_FAILURE;
 				}
 
 				break;
-			case '0':
+			case arg_disconnect:
 				if ([get_device(optarg) closeConnection] != kIOReturnSuccess) {
 					eprintf("Failed to disconnect %s\n", optarg);
 					return EXIT_FAILURE;
