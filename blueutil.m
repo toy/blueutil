@@ -33,7 +33,7 @@ void IOBluetoothPreferenceSetDiscoverableState(int state);
 typedef int (*getterFunc)();
 typedef bool (*setterFunc)(int);
 
-int BTSetParamState(int state, getterFunc getter, void (*setter)(int), char *name) {
+bool BTSetParamState(int state, getterFunc getter, void (*setter)(int), char *name) {
 	if (state == getter()) return true;
 
 	setter(state);
