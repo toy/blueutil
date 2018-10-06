@@ -370,11 +370,17 @@ int main(int argc, char *argv[]) {
 
 				break;
 			case '1':
-				if ([get_device(optarg) openConnection] != kIOReturnSuccess) return EXIT_FAILURE;
+				if ([get_device(optarg) openConnection] != kIOReturnSuccess) {
+					eprintf("Failed to connect %s\n", optarg);
+					return EXIT_FAILURE;
+				}
 
 				break;
 			case '0':
-				if ([get_device(optarg) closeConnection] != kIOReturnSuccess) return EXIT_FAILURE;
+				if ([get_device(optarg) closeConnection] != kIOReturnSuccess) {
+					eprintf("Failed to disconnect %s\n", optarg);
+					return EXIT_FAILURE;
+				}
 
 				break;
 		}
