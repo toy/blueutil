@@ -1,5 +1,5 @@
 ## blueutil
-*get/set bluetooth power and discoverable state on OSX*
+*CLI for bluetooth on OSX: power, discoverable state, list, inquire devices, connect, info, …*
 
 ### Usage
 ```
