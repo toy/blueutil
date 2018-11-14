@@ -30,15 +30,15 @@ STATE can be one of: 1, on, 0, off, toggle
 ```
 ### Installation
 blueutil is avaible trough the package manager homebrew:
-```
-$ brew install blueutil
+```sh
+brew install blueutil
 ```
 
-to build it from source run
-```
-$ git clone git@github.com:toy/blueutil.git
-$ cd blueutil
-$ make
+to build it from source run:
+```sh
+git clone git@github.com:toy/blueutil.git
+cd blueutil
+make
 ```
 
 ### Notes
