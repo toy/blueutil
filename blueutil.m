@@ -187,14 +187,14 @@ IOBluetoothDevice *get_device(char *id) {
 		device = [IOBluetoothDevice deviceWithAddressString:nsId];
 
 		if (!device) {
-			fprintf(stderr, "Device not found by address: %s\n", id);
+			eprintf("Device not found by address: %s\n", id);
 			exit(EXIT_FAILURE);
 		}
 	} else {
 		NSArray *recentDevices = [IOBluetoothDevice recentDevices:0];
 
 		if (!recentDevices) {
-			fprintf(stderr, "No recent devices to search for: %s\n", id);
+			eprintf("No recent devices to search for: %s\n", id);
 			exit(EXIT_FAILURE);
 		}
 
@@ -204,7 +204,7 @@ IOBluetoothDevice *get_device(char *id) {
 		}
 
 		if (!device) {
-			fprintf(stderr, "Device not found by name: %s\n", id);
+			eprintf("Device not found by name: %s\n", id);
 			exit(EXIT_FAILURE);
 		}
 	}
