@@ -16,17 +16,18 @@ Without options outputs current state
         --favourites          list favourite devices
         --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates
         --paired              list paired devices
-        --recent [N]          list recent devices, 10 by default
+        --recent [N]          list recently used devices, 10 by default
 
-        --info ADDR           show information about device with address
-        --is-connected ADDR   device with address connected state as 1 or 0
-        --connect ADDR        create a connection to device with address
-        --disconnect ADDR     close the connection to device with address
+        --info ID             show information about device
+        --is-connected ID     connected state of device as 1 or 0
+        --connect ID          create a connection to device
+        --disconnect ID       close the connection to device
 
     -h, --help                this help
     -v, --version             show version
 
 STATE can be one of: 1, on, 0, off, toggle
+ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices
 ```
 ### Installation
 blueutil is avaible trough the package manager homebrew:
