@@ -1,7 +1,9 @@
-## blueutil
-*CLI for bluetooth on OSX: power, discoverable state, list, inquire devices, connect, info, …*
+# blueutil
 
-### Usage
+CLI for bluetooth on OSX: power, discoverable state, list, inquire devices, connect, info, …
+
+## Usage
+
 ```
 Usage:
   blueutil [options]
@@ -29,21 +31,26 @@ Without options outputs current state
 STATE can be one of: 1, on, 0, off, toggle
 ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices
 ```
-### Installation
-blueutil is avaible trough the package manager homebrew:
+
+## Installation
+
+`blueutil` is avaible trough the package manager homebrew:
+
 ```sh
 brew install blueutil
 ```
 
 to build it from source run:
+
 ```sh
 git clone git@github.com:toy/blueutil.git
 cd blueutil
 make
 ```
 
-### Notes
-Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
+## Notes
+
+Uses private API from IOBluetooth framework (i.e. `IOBluetoothPreference*()`).
 
 Opening Bluetooth preference pane always turns on discoverability if bluetooth power is on or if it is switched on when preference pane is open, this change of state is not reported by the function used by `blueutil`.
 
