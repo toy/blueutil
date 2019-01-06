@@ -83,6 +83,7 @@ void usage(FILE *io) {
 	io_puts(io, "        --is-connected ID     connected state of device as 1 or 0");
 	io_puts(io, "        --connect ID          create a connection to device");
 	io_puts(io, "        --disconnect ID       close the connection to device");
+	io_puts(io, "        --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode");
 	io_puts(io, "");
 	io_puts(io, "    -h, --help                this help");
 	io_puts(io, "    -v, --version             show version");
@@ -91,17 +92,22 @@ void usage(FILE *io) {
 	io_puts(io, "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices");
 }
 
-// getopt_long doesn't consume optional argument separated by space
-// https://stackoverflow.com/a/32575314
-void extend_optarg(int argc, char *argv[]) {
+char *next_optarg(int argc, char *argv[]) {
 	if (
-		!optarg &&
 		optind < argc &&
 		NULL != argv[optind] &&
 		'-' != argv[optind][0]
 	) {
-		optarg = argv[optind++];
+		return argv[optind++];
+	} else {
+		return NULL;
 	}
+}
+
+// getopt_long doesn't consume optional argument separated by space
+// https://stackoverflow.com/a/32575314
+void extend_optarg(int argc, char *argv[]) {
+	if (!optarg) optarg = next_optarg(argc, argv);
 }
 
 bool parse_state_arg(char *arg, int *state) {
@@ -236,6 +242,166 @@ void list_devices(NSArray *devices) {
 }
 @end
 
+static inline bool is_caseabbr(const char* name, const char* str) {
+	size_t length = strlen(str);
+	if (length < 1) length = 1;
+	return strncasecmp(name, str, length) == 0;
+}
+
+const char* hciErrorDescriptions[] = {
+	[0x01] = "Unknown HCI Command",
+	[0x02] = "No Connection",
+	[0x03] = "Hardware Failure",
+	[0x04] = "Page Timeout",
+	[0x05] = "Authentication Failure",
+	[0x06] = "Key Missing",
+	[0x07] = "Memory Full",
+	[0x08] = "Connection Timeout",
+	[0x09] = "Max Number of Connections",
+	[0x0a] = "Max Number of SCO Connections to a Device",
+	[0x0b] = "ACL Connection Already Exists",
+	[0x0c] = "Command Disallowed",
+	[0x0d] = "Host Rejected Limited Resources",
+	[0x0e] = "Host Rejected Security Reasons",
+	[0x0f] = "Host Rejected Remote Device Is Personal / Host Rejected Unacceptable Device Address (2.0+)",
+	[0x10] = "Host Timeout",
+	[0x11] = "Unsupported Feature or Parameter Value",
+	[0x12] = "Invalid HCI Command Parameters",
+	[0x13] = "Other End Terminated Connection User Ended",
+	[0x14] = "Other End Terminated Connection Low Resources",
+	[0x15] = "Other End Terminated Connection About to Power Off",
+	[0x16] = "Connection Terminated by Local Host",
+	[0x17] = "Repeated Attempts",
+	[0x18] = "Pairing Not Allowed",
+	[0x19] = "Unknown LMP PDU",
+	[0x1a] = "Unsupported Remote Feature",
+	[0x1b] = "SCO Offset Rejected",
+	[0x1c] = "SCO Interval Rejected",
+	[0x1d] = "SCO Air Mode Rejected",
+	[0x1e] = "Invalid LMP Parameters",
+	[0x1f] = "Unspecified Error",
+	[0x20] = "Unsupported LMP Parameter Value",
+	[0x21] = "Role Change Not Allowed",
+	[0x22] = "LMP Response Timeout",
+	[0x23] = "LMP Error Transaction Collision",
+	[0x24] = "LMP PDU Not Allowed",
+	[0x25] = "Encryption Mode Not Acceptable",
+	[0x26] = "Unit Key Used",
+	[0x27] = "QoS Not Supported",
+	[0x28] = "Instant Passed",
+	[0x29] = "Pairing With Unit Key Not Supported",
+	[0x2a] = "Different Transaction Collision",
+	[0x2c] = "QoS Unacceptable Parameter",
+	[0x2d] = "QoS Rejected",
+	[0x2e] = "Channel Classification Not Supported",
+	[0x2f] = "Insufficient Security",
+	[0x30] = "Parameter Out of Mandatory Range",
+	[0x31] = "Role Switch Pending",
+	[0x34] = "Reserved Slot Violation",
+	[0x35] = "Role Switch Failed",
+	[0x36] = "Extended Inquiry Response Too Large",
+	[0x37] = "Secure Simple Pairing Not Supported by Host",
+	[0x38] = "Host Busy Pairing",
+	[0x39] = "Connection Rejected Due to No Suitable Channel Found",
+	[0x3a] = "Controller Busy",
+	[0x3b] = "Unacceptable Connection Interval",
+	[0x3c] = "Directed Advertising Timeout",
+	[0x3d] = "Connection Terminated Due to MIC Failure",
+	[0x3e] = "Connection Failed to Be Established",
+	[0x3f] = "MAC Connection Failed",
+	[0x40] = "Coarse Clock Adjustment Rejected",
+};
+
+@interface DevicePairDelegate : NSObject <IOBluetoothDevicePairDelegate>
+@property (readonly) IOReturn errorCode;
+@property char* requestedPin;
+@end
+@implementation DevicePairDelegate
+- (const char*)errorDescription {
+	if (
+		_errorCode >= 0 &&
+		(unsigned)_errorCode < sizeof(hciErrorDescriptions) / sizeof(hciErrorDescriptions[0]) &&
+		hciErrorDescriptions[_errorCode]
+	) {
+		return hciErrorDescriptions[_errorCode];
+	} else {
+		return "UNKNOWN ERROR";
+	}
+}
+
+- (void)devicePairingFinished:(__unused id)sender error:(IOReturn)error {
+	_errorCode = error;
+	CFRunLoopStop(CFRunLoopGetCurrent());
+}
+
+- (void)devicePairingPINCodeRequest:(id)sender {
+	BluetoothPINCode pinCode;
+	ByteCount pinCodeSize;
+
+	if (_requestedPin) {
+		eprintf(
+			"Input pin %.16s on \"%s\" (%s)\n",
+			_requestedPin,
+			[[[sender device] name] UTF8String],
+			[[[sender device] addressString] UTF8String]
+		);
+
+		pinCodeSize = strlen(_requestedPin);
+		if (pinCodeSize > 16) pinCodeSize = 16;
+		strncpy((char *)pinCode.data, _requestedPin, pinCodeSize);
+	} else {
+		eprintf(
+			"Type pin code (up to 16 characters) for \"%s\" (%s) and press Enter: ",
+			[[[sender device] name] UTF8String],
+			[[[sender device] addressString] UTF8String]
+		);
+
+		size_t input_size = 16 + 2;
+		char input[input_size];
+		fgets(input, input_size, stdin);
+		input[strcspn(input, "\n")] = 0;
+
+		pinCodeSize = strlen(input);
+		strncpy((char *)pinCode.data, input, pinCodeSize);
+	}
+
+	[sender replyPINCode:pinCodeSize PINCode:&pinCode];
+}
+
+- (void)devicePairingUserConfirmationRequest:(id)sender numericValue:(BluetoothNumericValue)numericValue {
+	eprintf(
+		"Does \"%s\" (%s) display number %06u (yes/no)? ",
+		[[[sender device] name] UTF8String],
+		[[[sender device] addressString] UTF8String],
+		numericValue
+	);
+
+	size_t input_size = 3 + 2;
+	char input[input_size];
+	fgets(input, input_size, stdin);
+	input[strcspn(input, "\n")] = 0;
+
+	if (is_caseabbr("yes", input)) {
+		[sender replyUserConfirmation:YES];
+		return;
+	}
+
+	if (is_caseabbr("no", input)) {
+		[sender replyUserConfirmation:NO];
+		return;
+	}
+}
+
+- (void)devicePairingUserPasskeyNotification:(id)sender passkey:(BluetoothPasskey)passkey {
+	eprintf(
+		"Input passkey %06u on \"%s\" (%s)\n",
+		passkey,
+		[[[sender device] name] UTF8String],
+		[[[sender device] addressString] UTF8String]
+	);
+}
+@end
+
 int main(int argc, char *argv[]) {
 	if (!BTAvaliable()) {
 		io_puts(stderr, "Error: Bluetooth not available!");
@@ -257,10 +423,12 @@ int main(int argc, char *argv[]) {
 		arg_inquiry,
 		arg_paired,
 		arg_recent,
+
 		arg_info,
 		arg_is_connected,
 		arg_connect,
 		arg_disconnect,
+		arg_pair,
 	};
 
 	const char* optstring = "p::d::hv";
@@ -277,6 +445,7 @@ int main(int argc, char *argv[]) {
 		{"is-connected",    required_argument, NULL, arg_is_connected},
 		{"connect",         required_argument, NULL, arg_connect},
 		{"disconnect",      required_argument, NULL, arg_disconnect},
+		{"pair",            required_argument, NULL, arg_pair},
 
 		{"help",            no_argument,       NULL, arg_help},
 		{"version",         no_argument,       NULL, arg_version},
@@ -315,6 +484,15 @@ int main(int argc, char *argv[]) {
 			case arg_connect:
 			case arg_disconnect:
 				break;
+			case arg_pair: {
+				char *requested_pin = next_optarg(argc, argv);
+
+				if (requested_pin && strlen(requested_pin) > 16) {
+					eprintf("Pairing pin can't be longer than 16 characters, got %lu (%s)\n", strlen(requested_pin), requested_pin);
+					return EXIT_FAILURE;
+				}
+
+			} break;
 			case arg_version:
 				io_puts(stdout, VERSION);
 				return EXIT_SUCCESS;
@@ -407,18 +585,39 @@ int main(int argc, char *argv[]) {
 				break;
 			case arg_connect:
 				if ([get_device(optarg) openConnection] != kIOReturnSuccess) {
-					eprintf("Failed to connect %s\n", optarg);
+					eprintf("Failed to connect \"%s\"\n", optarg);
 					return EXIT_FAILURE;
 				}
 
 				break;
 			case arg_disconnect:
 				if ([get_device(optarg) closeConnection] != kIOReturnSuccess) {
-					eprintf("Failed to disconnect %s\n", optarg);
+					eprintf("Failed to disconnect \"%s\"\n", optarg);
 					return EXIT_FAILURE;
 				}
 
 				break;
+			case arg_pair: {
+				IOBluetoothDevice* device = get_device(optarg);
+				DevicePairDelegate* delegate = [[DevicePairDelegate alloc] init];
+				IOBluetoothDevicePair *pairer = [IOBluetoothDevicePair pairWithDevice:device];
+				pairer.delegate = delegate;
+
+				delegate.requestedPin = next_optarg(argc, argv);
+
+				if ([pairer start] != kIOReturnSuccess) {
+					eprintf("Failed to start pairing with \"%s\"\n", optarg);
+					return EXIT_FAILURE;
+				}
+				CFRunLoopRun();
+				[pairer stop];
+
+				if (![device isPaired]) {
+					eprintf("Failed to pair \"%s\" with error 0x%02x (%s)\n", optarg, [delegate errorCode], [delegate errorDescription]);
+					return EXIT_FAILURE;
+				}
+
+			} break;
 		}
 	}
 

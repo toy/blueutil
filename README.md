@@ -24,6 +24,7 @@ Without options outputs current state
         --is-connected ID     connected state of device as 1 or 0
         --connect ID          create a connection to device
         --disconnect ID       close the connection to device
+        --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode
 
     -h, --help                this help
     -v, --version             show version
