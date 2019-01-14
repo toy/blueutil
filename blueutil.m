@@ -11,7 +11,7 @@
 // Further development by Ivan Kuchin
 // https://github.com/toy/blueutil
 
-#define VERSION "2.2.0"
+#define VERSION "2.3.0"
 
 #import <IOBluetooth/IOBluetooth.h>
 
