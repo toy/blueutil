@@ -1,15 +1,12 @@
 // blueutil
-// Command-line utility to control Bluetooth.
+//
+// CLI for bluetooth on OSX: power, discoverable state, list, inquire devices, connect, info, …
 // Uses private API from IOBluetooth framework (i.e. IOBluetoothPreference*()).
-// http://www.frederikseiffert.de/blueutil
-//
-// This software is public domain. It is provided without any warranty
-// whatsoever, and may be modified or used without attribution.
-//
-// Written by Frederik Seiffert <ego@frederikseiffert.de>
-//
-// Further development by Ivan Kuchin
 // https://github.com/toy/blueutil
+//
+// Originally written by Frederik Seiffert <ego@frederikseiffert.de> http://www.frederikseiffert.de/blueutil/
+//
+// Copyright (c) 2011-2019 Ivan Kuchin. See <LICENSE.txt> for details.
 
 #define VERSION "2.3.0"
 
