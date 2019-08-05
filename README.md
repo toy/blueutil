@@ -26,11 +26,17 @@ Without options outputs current state
         --disconnect ID       close the connection to device
         --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode
 
+        --format FORMAT       change output format of info and all listing commands
+
     -h, --help                this help
     -v, --version             show version
 
 STATE can be one of: 1, on, 0, off, toggle
 ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices
+FORMAT can be one of:
+  default - human readable text output not intended for consumption by scripts
+  json - compact JSON
+  json-pretty - pretty printed JSON
 ```
 
 ## Installation

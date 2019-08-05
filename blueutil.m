@@ -82,11 +82,17 @@ void usage(FILE *io) {
 	io_puts(io, "        --disconnect ID       close the connection to device");
 	io_puts(io, "        --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode");
 	io_puts(io, "");
+	io_puts(io, "        --format FORMAT       change output format of info and all listing commands");
+	io_puts(io, "");
 	io_puts(io, "    -h, --help                this help");
 	io_puts(io, "    -v, --version             show version");
 	io_puts(io, "");
 	io_puts(io, "STATE can be one of: 1, on, 0, off, toggle");
 	io_puts(io, "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices");
+	io_puts(io, "FORMAT can be one of:");
+	io_puts(io, "  default - human readable text output not intended for consumption by scripts");
+	io_puts(io, "  json - compact JSON");
+	io_puts(io, "  json-pretty - pretty printed JSON");
 }
 
 char *next_optarg(int argc, char *argv[]) {
@@ -215,7 +221,8 @@ IOBluetoothDevice *get_device(char *id) {
 	return device;
 }
 
-void list_devices(NSArray *devices) {
+void list_devices_default(NSArray *devices, bool _first_only) {
+	(void)_first_only; // unused
 	for (IOBluetoothDevice* device in devices) {
 		printf("address: %s", [[device addressString] UTF8String]);
 		if ([device isConnected]) {
@@ -229,6 +236,72 @@ void list_devices(NSArray *devices) {
 		printf(", recent access date: %s", [[[device recentAccessDate] description] UTF8String]);
 		printf("\n");
 	}
+}
+
+void list_devices_json(NSArray *devices, bool first_only, bool pretty) {
+	NSMutableArray *descriptions = [NSMutableArray arrayWithCapacity:[devices count]];
+
+	// https://stackoverflow.com/a/16254918/96823
+	NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+	[dateFormatter setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"]];
+	[dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
+	[dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssZZZZZ"];
+
+	for (IOBluetoothDevice* device in devices) {
+		NSMutableDictionary *description = [NSMutableDictionary dictionaryWithDictionary:@{
+			@"address": [device addressString],
+			@"name": [device name],
+			@"recentAccessDate": [dateFormatter stringFromDate:[device recentAccessDate]],
+			@"favourite": [device isFavorite] ? @(YES) : @(NO),
+			@"paired": [device isPaired] ? @(YES) : @(NO),
+			@"connected": [device isConnected] ? @(YES) : @(NO),
+		}];
+
+		if ([device isConnected]) {
+			description[@"slave"] = [device isIncoming] ? @(YES) : @(NO);
+			description[@"RSSI"] = [NSNumber numberWithChar:[device RSSI]];
+			description[@"rawRSSI"] = [NSNumber numberWithChar:[device rawRSSI]];
+		}
+
+		[descriptions addObject:description];
+	}
+
+	NSOutputStream *stdout = [NSOutputStream outputStreamToFileAtPath:@"/dev/stdout" append:NO];
+	[stdout open];
+	[NSJSONSerialization writeJSONObject:(first_only ? [descriptions firstObject] : descriptions) toStream:stdout options:(pretty ? NSJSONWritingPrettyPrinted : 0) error:NULL];
+	if (pretty) {
+		[stdout write:(const uint8_t *)"\n" maxLength:1];
+	}
+	[stdout close];
+}
+
+void list_devices_json_default(NSArray *devices, bool first_only) {
+	list_devices_json(devices, first_only, false);
+}
+
+void list_devices_json_pretty(NSArray *devices, bool first_only) {
+	list_devices_json(devices, first_only, true);
+}
+
+typedef void (*formatterFunc)(NSArray *, bool);
+
+bool parse_output_formatter(char *arg, formatterFunc *formatter) {
+	if (0 == strcasecmp(arg, "default")) {
+		if (formatter) *formatter = list_devices_default;
+		return true;
+	}
+
+	if (0 == strcasecmp(arg, "json")) {
+		if (formatter) *formatter = list_devices_json_default;
+		return true;
+	}
+
+	if (0 == strcasecmp(arg, "json-pretty")) {
+		if (formatter) *formatter = list_devices_json_pretty;
+		return true;
+	}
+
+	return false;
 }
 
 @interface DeviceInquiryRunLoopStopper : NSObject <IOBluetoothDeviceInquiryDelegate>
@@ -426,6 +499,8 @@ int main(int argc, char *argv[]) {
 		arg_connect,
 		arg_disconnect,
 		arg_pair,
+
+		arg_format,
 	};
 
 	const char* optstring = "p::d::hv";
@@ -443,6 +518,8 @@ int main(int argc, char *argv[]) {
 		{"connect",         required_argument, NULL, arg_connect},
 		{"disconnect",      required_argument, NULL, arg_disconnect},
 		{"pair",            required_argument, NULL, arg_pair},
+
+		{"format",          required_argument, NULL, arg_format},
 
 		{"help",            no_argument,       NULL, arg_help},
 		{"version",         no_argument,       NULL, arg_version},
@@ -490,6 +567,13 @@ int main(int argc, char *argv[]) {
 				}
 
 			} break;
+			case arg_format:
+				if (!parse_output_formatter(optarg, NULL)) {
+					eprintf("Unexpected format: %s\n", optarg);
+					return EXIT_FAILURE;
+				}
+
+				break;
 			case arg_version:
 				io_puts(stdout, VERSION);
 				return EXIT_SUCCESS;
@@ -512,6 +596,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	optind = 1;
+	formatterFunc list_devices = list_devices_default;
 	while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
 		switch (ch) {
 			case arg_power:
@@ -539,11 +624,11 @@ int main(int argc, char *argv[]) {
 
 				break;
 			case arg_favourites:
-				list_devices([IOBluetoothDevice favoriteDevices]);
+				list_devices([IOBluetoothDevice favoriteDevices], false);
 
 				break;
 			case arg_paired:
-				list_devices([IOBluetoothDevice pairedDevices]);
+				list_devices([IOBluetoothDevice pairedDevices], false);
 
 				break;
 			case arg_inquiry: {
@@ -560,7 +645,7 @@ int main(int argc, char *argv[]) {
 				CFRunLoopRun();
 				[inquirer stop];
 
-				list_devices([inquirer foundDevices]);
+				list_devices([inquirer foundDevices], false);
 
 			} break;
 			case arg_recent: {
@@ -569,11 +654,11 @@ int main(int argc, char *argv[]) {
 				extend_optarg(argc, argv);
 				if (optarg) parse_unsigned_long_arg(optarg, &n);
 
-				list_devices([IOBluetoothDevice recentDevices:n]);
+				list_devices([IOBluetoothDevice recentDevices:n], false);
 
 			} break;
 			case arg_info:
-				list_devices(@[get_device(optarg)]);
+				list_devices(@[get_device(optarg)], true);
 
 				break;
 			case arg_is_connected:
@@ -615,6 +700,10 @@ int main(int argc, char *argv[]) {
 				}
 
 			} break;
+			case arg_format:
+				parse_output_formatter(optarg, &list_devices);
+
+				break;
 		}
 	}
 
