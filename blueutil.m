@@ -353,7 +353,7 @@ const char* hciErrorDescriptions[] = {
 			[[[sender device] addressString] UTF8String]
 		);
 
-		size_t input_size = 16 + 2;
+		uint input_size = 16 + 2;
 		char input[input_size];
 		fgets(input, input_size, stdin);
 		input[strcspn(input, "\n")] = 0;
@@ -373,7 +373,7 @@ const char* hciErrorDescriptions[] = {
 		numericValue
 	);
 
-	size_t input_size = 3 + 2;
+	uint input_size = 3 + 2;
 	char input[input_size];
 	fgets(input, input_size, stdin);
 	input[strcspn(input, "\n")] = 0;
