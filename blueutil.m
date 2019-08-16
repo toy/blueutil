@@ -91,6 +91,7 @@ void usage(FILE *io) {
 	io_puts(io, "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices");
 	io_puts(io, "FORMAT can be one of:");
 	io_puts(io, "  default - human readable text output not intended for consumption by scripts");
+	io_puts(io, "  new-default - human readable comma separated key-value pairs (EXPERIMENTAL, THE BEHAVIOUR MAY CHANGE)");
 	io_puts(io, "  json - compact JSON");
 	io_puts(io, "  json-pretty - pretty printed JSON");
 }
@@ -221,8 +222,7 @@ IOBluetoothDevice *get_device(char *id) {
 	return device;
 }
 
-void list_devices_default(NSArray *devices, bool _first_only) {
-	(void)_first_only; // unused
+void list_devices_default(NSArray *devices, bool first_only) {
 	for (IOBluetoothDevice* device in devices) {
 		printf("address: %s", [[device addressString] UTF8String]);
 		if ([device isConnected]) {
@@ -235,6 +235,22 @@ void list_devices_default(NSArray *devices, bool _first_only) {
 		printf(", name: \"%s\"", [[device name] UTF8String]);
 		printf(", recent access date: %s", [[[device recentAccessDate] description] UTF8String]);
 		printf("\n");
+		if (first_only) break;
+	}
+}
+
+void list_devices_new_default(NSArray *devices, bool first_only) {
+	const char *separator = first_only ? "\n" : ", ";
+	for (IOBluetoothDevice* device in devices) {
+		printf("address: %s%s", [[device addressString] UTF8String], separator);
+		printf("recent access: %s%s", [[[device recentAccessDate] description] UTF8String], separator);
+		printf("favourite: %s%s", [device isFavorite] ? "yes" : "no", separator);
+		printf("paired: %s%s", [device isPaired] ? "yes" : "no", separator);
+		printf("connected: %s%s", [device isConnected] ? ([device isIncoming] ? "slave" : "master") : "no", separator);
+		printf("rssi: %s%s", [device isConnected] ? [[NSString stringWithFormat: @"%d", [device RSSI]] UTF8String] : "-", separator);
+		printf("raw rssi: %s%s", [device isConnected] ? [[NSString stringWithFormat: @"%d", [device rawRSSI]] UTF8String] : "-", separator);
+		printf("name: %s\n", [[device name] UTF8String]);
+		if (first_only) break;
 	}
 }
 
@@ -288,6 +304,11 @@ typedef void (*formatterFunc)(NSArray *, bool);
 bool parse_output_formatter(char *arg, formatterFunc *formatter) {
 	if (0 == strcasecmp(arg, "default")) {
 		if (formatter) *formatter = list_devices_default;
+		return true;
+	}
+
+	if (0 == strcasecmp(arg, "new-default")) {
+		if (formatter) *formatter = list_devices_new_default;
 		return true;
 	}
 
