@@ -35,16 +35,32 @@ ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:
 
 ## Installation
 
-`blueutil` is avaible trough the package manager homebrew:
+### Homebrew
+
+Using package manager [Homebrew](https://brew.sh/):
 
 ```sh
 brew install blueutil
 ```
 
-to build it from source run:
+### MacPorts
+
+Using package manager [MacPorts](https://www.macports.org/):
 
 ```sh
-git clone git@github.com:toy/blueutil.git
+port install blueutil
+
+# or probably using sudo
+
+sudo port install blueutil
+```
+
+### From source
+
+To build from source:
+
+```sh
+git clone https://github.com/toy/blueutil.git
 cd blueutil
 make
 ```
