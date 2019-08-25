@@ -232,8 +232,8 @@ void list_devices_default(NSArray *devices, bool first_only) {
 		}
 		printf(", %s", [device isFavorite] ? "favourite" : "not favourite");
 		printf(", %s", [device isPaired] ? "paired" : "not paired");
-		printf(", name: \"%s\"", [[device name] UTF8String]);
-		printf(", recent access date: %s", [[[device recentAccessDate] description] UTF8String]);
+		printf(", name: \"%s\"", [device name] ? [[device name] UTF8String] : "-");
+		printf(", recent access date: %s", [device recentAccessDate] ? [[[device recentAccessDate] description] UTF8String] : "-");
 		printf("\n");
 		if (first_only) break;
 	}
@@ -243,13 +243,13 @@ void list_devices_new_default(NSArray *devices, bool first_only) {
 	const char *separator = first_only ? "\n" : ", ";
 	for (IOBluetoothDevice* device in devices) {
 		printf("address: %s%s", [[device addressString] UTF8String], separator);
-		printf("recent access: %s%s", [[[device recentAccessDate] description] UTF8String], separator);
+		printf("recent access: %s%s", [device recentAccessDate] ? [[[device recentAccessDate] description] UTF8String] : "-", separator);
 		printf("favourite: %s%s", [device isFavorite] ? "yes" : "no", separator);
 		printf("paired: %s%s", [device isPaired] ? "yes" : "no", separator);
 		printf("connected: %s%s", [device isConnected] ? ([device isIncoming] ? "slave" : "master") : "no", separator);
 		printf("rssi: %s%s", [device isConnected] ? [[NSString stringWithFormat: @"%d", [device RSSI]] UTF8String] : "-", separator);
 		printf("raw rssi: %s%s", [device isConnected] ? [[NSString stringWithFormat: @"%d", [device rawRSSI]] UTF8String] : "-", separator);
-		printf("name: %s\n", [[device name] UTF8String]);
+		printf("name: %s\n", [device name] ? [[device name] UTF8String] : "-");
 		if (first_only) break;
 	}
 }
@@ -266,8 +266,8 @@ void list_devices_json(NSArray *devices, bool first_only, bool pretty) {
 	for (IOBluetoothDevice* device in devices) {
 		NSMutableDictionary *description = [NSMutableDictionary dictionaryWithDictionary:@{
 			@"address": [device addressString],
-			@"name": [device name],
-			@"recentAccessDate": [dateFormatter stringFromDate:[device recentAccessDate]],
+			@"name": [device name] ? [device name] : [NSNull null],
+			@"recentAccessDate": [device recentAccessDate] ? [dateFormatter stringFromDate:[device recentAccessDate]] : [NSNull null],
 			@"favourite": [device isFavorite] ? @(YES) : @(NO),
 			@"paired": [device isPaired] ? @(YES) : @(NO),
 			@"connected": [device isConnected] ? @(YES) : @(NO),
