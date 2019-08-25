@@ -548,6 +548,8 @@ int main(int argc, char *argv[]) {
 		{NULL, 0, NULL, 0}
 	};
 
+	formatterFunc list_devices = list_devices_default;
+
 	int ch;
 	while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
 		switch (ch) {
@@ -589,7 +591,7 @@ int main(int argc, char *argv[]) {
 
 			} break;
 			case arg_format:
-				if (!parse_output_formatter(optarg, NULL)) {
+				if (!parse_output_formatter(optarg, &list_devices)) {
 					eprintf("Unexpected format: %s\n", optarg);
 					return EXIT_FAILURE;
 				}
@@ -617,7 +619,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	optind = 1;
-	formatterFunc list_devices = list_devices_default;
 	while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
 		switch (ch) {
 			case arg_power:
@@ -721,10 +722,6 @@ int main(int argc, char *argv[]) {
 				}
 
 			} break;
-			case arg_format:
-				parse_output_formatter(optarg, &list_devices);
-
-				break;
 		}
 	}
 
