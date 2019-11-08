@@ -40,14 +40,22 @@ FORMAT can be one of:
   json-pretty - pretty printed JSON
 ```
 
-## Installation
+## Install/update/uninstall
 
 ### Homebrew
 
 Using package manager [Homebrew](https://brew.sh/):
 
 ```sh
+# install
 brew install blueutil
+
+# update
+brew update
+brew upgrade blueutil
+
+# uninstall
+brew remove blueutil
 ```
 
 ### MacPorts
@@ -55,22 +63,37 @@ brew install blueutil
 Using package manager [MacPorts](https://www.macports.org/):
 
 ```sh
+# install
 port install blueutil
 
-# or probably using sudo
+# update
+port selfupdate
+port upgrade blueutil
 
-sudo port install blueutil
+# uninstall
+port uninstall blueutil
 ```
 
-### From source
+You will probably need to prefix all commands with `sudo`.
 
-To build from source:
+### From source
 
 ```sh
 git clone https://github.com/toy/blueutil.git
 cd blueutil
+
+# build
 make
+
+# install/update
+git pull
+make install
+
+# uninstall
+make uninstall
 ```
+
+You may need to prefix install/update and uninstall make commands with `sudo`.
 
 ## Notes
 
