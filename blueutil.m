@@ -81,6 +81,8 @@ void usage(FILE *io) {
 	io_puts(io, "        --connect ID          create a connection to device");
 	io_puts(io, "        --disconnect ID       close the connection to device");
 	io_puts(io, "        --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode");
+	io_puts(io, "        --add-favourite ID    add to favourites");
+	io_puts(io, "        --remove-favourite ID remove from favourites");
 	io_puts(io, "");
 	io_puts(io, "        --format FORMAT       change output format of info and all listing commands");
 	io_puts(io, "");
@@ -520,6 +522,8 @@ int main(int argc, char *argv[]) {
 		arg_connect,
 		arg_disconnect,
 		arg_pair,
+		arg_add_favourite,
+		arg_remove_favourite,
 
 		arg_format,
 	};
@@ -539,6 +543,8 @@ int main(int argc, char *argv[]) {
 		{"connect",         required_argument, NULL, arg_connect},
 		{"disconnect",      required_argument, NULL, arg_disconnect},
 		{"pair",            required_argument, NULL, arg_pair},
+		{"add-favourite",    required_argument, NULL, arg_add_favourite},
+		{"remove-favourite", required_argument, NULL, arg_remove_favourite},
 
 		{"format",          required_argument, NULL, arg_format},
 
@@ -580,6 +586,8 @@ int main(int argc, char *argv[]) {
 			case arg_is_connected:
 			case arg_connect:
 			case arg_disconnect:
+			case arg_add_favourite:
+			case arg_remove_favourite:
 				break;
 			case arg_pair: {
 				char *requested_pin = next_optarg(argc, argv);
@@ -722,6 +730,20 @@ int main(int argc, char *argv[]) {
 				}
 
 			} break;
+			case arg_add_favourite:
+				if ([get_device(optarg) addToFavorites] != kIOReturnSuccess) {
+					eprintf("Failed to add \"%s\" to favourites\n", optarg);
+					return EXIT_FAILURE;
+				}
+
+				break;
+			case arg_remove_favourite:
+				if ([get_device(optarg) removeFromFavorites] != kIOReturnSuccess) {
+					eprintf("Failed to remove \"%s\" from favourites\n", optarg);
+					return EXIT_FAILURE;
+				}
+
+				break;
 		}
 	}
 
