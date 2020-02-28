@@ -86,11 +86,21 @@ void usage(FILE *io) {
 	io_puts(io, "");
 	io_puts(io, "        --format FORMAT       change output format of info and all listing commands");
 	io_puts(io, "");
+	io_puts(io, "        --wait-connect ID [TIMEOUT]");
+	io_puts(io, "                              EXPERIMENTAL wait for device to connect");
+	io_puts(io, "        --wait-disconnect ID [TIMEOUT]");
+	io_puts(io, "                              EXPERIMENTAL wait for device to disconnect");
+	io_puts(io, "        --wait-rssi ID OP VALUE [PERIOD [TIMEOUT]]");
+	io_puts(io, "                              EXPERIMENTAL wait for device RSSI value which is 0 for golden range, -129 if it cannot be read (e.g. device is disconnected)");
+	io_puts(io, "");
 	io_puts(io, "    -h, --help                this help");
 	io_puts(io, "    -v, --version             show version");
 	io_puts(io, "");
 	io_puts(io, "STATE can be one of: 1, on, 0, off, toggle");
 	io_puts(io, "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices");
+	io_puts(io, "OP can be one of: >, >=, <, <=, =, !=; or equivalents: gt, ge, lt, le, eq, ne");
+	io_puts(io, "PERIOD is in seconds, defaults to 1");
+	io_puts(io, "TIMEOUT is in seconds, default value 0 doesn't add timeout");
 	io_puts(io, "FORMAT can be one of:");
 	io_puts(io, "  default - human readable text output not intended for consumption by scripts");
 	io_puts(io, "  new-default - human readable comma separated key-value pairs (EXPERIMENTAL, THE BEHAVIOUR MAY CHANGE)");
@@ -98,16 +108,27 @@ void usage(FILE *io) {
 	io_puts(io, "  json-pretty - pretty printed JSON");
 }
 
-char *next_optarg(int argc, char *argv[]) {
+char *next_arg(int argc, char *argv[], bool required) {
 	if (
 		optind < argc &&
 		NULL != argv[optind] &&
-		'-' != argv[optind][0]
+		(
+			required ||
+			'-' != argv[optind][0]
+		)
 	) {
 		return argv[optind++];
 	} else {
 		return NULL;
 	}
+}
+
+char *next_reqarg(int argc, char *argv[]) {
+	return next_arg(argc, argv, true);
+}
+
+char *next_optarg(int argc, char *argv[]) {
+	return next_arg(argc, argv, false);
 }
 
 // getopt_long doesn't consume optional argument separated by space
@@ -181,6 +202,30 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
 	switch (result) {
 		case 0:
 			if (number) *number = strtoul(arg, NULL, 10);
+			return true;
+		case REG_NOMATCH:
+			return false;
+		default:
+			eprintf("Failed matching regex");
+			exit(EXIT_FAILURE);
+	}
+}
+
+bool parse_signed_long_arg(char *arg, long *number) {
+	regex_t regex;
+
+	if (0 != regcomp(&regex, "^-?[[:digit:]]+$", REG_EXTENDED | REG_NOSUB)) {
+		eprintf("Failed compiling regex");
+		exit(EXIT_FAILURE);
+	}
+
+	int result = regexec(&regex, arg, 0, NULL, 0);
+
+	regfree(&regex);
+
+	switch (result) {
+		case 0:
+			if (number) *number = strtol(arg, NULL, 10);
 			return true;
 		case REG_NOMATCH:
 			return false;
@@ -497,6 +542,50 @@ const char* hciErrorDescriptions[] = {
 }
 @end
 
+bool op_gt(long a, long b) { return a > b; }
+bool op_ge(long a, long b) { return a >= b; }
+bool op_lt(long a, long b) { return a < b; }
+bool op_le(long a, long b) { return a <= b; }
+bool op_eq(long a, long b) { return a == b; }
+bool op_ne(long a, long b) { return a != b; }
+
+typedef bool (*opFunc)(long a, long b);
+
+#define PARSE_OP_ARG_MATCHER(name, alt) \
+	if (0 == strcmp(arg, #name) || 0 == strcmp(arg, #alt)) { \
+		if (op) *op = op_ ## name; \
+		if (op_name) *op_name = #alt; \
+		return true; \
+	}
+
+bool parse_op_arg(char *arg, opFunc *op, char **op_name) {
+	PARSE_OP_ARG_MATCHER(gt, >);
+	PARSE_OP_ARG_MATCHER(ge, >=);
+	PARSE_OP_ARG_MATCHER(lt, <);
+	PARSE_OP_ARG_MATCHER(le, <=);
+	PARSE_OP_ARG_MATCHER(eq, =);
+	PARSE_OP_ARG_MATCHER(ne, !=);
+
+	return false;
+}
+
+@interface DeviceNotificationRunLoopStopper : NSObject
+@end
+@implementation DeviceNotificationRunLoopStopper {
+	IOBluetoothDevice *expectedDevice;
+}
+- (id)initWithExpectedDevice:(IOBluetoothDevice *)device {
+	expectedDevice = device;
+	return self;
+}
+- (void)notification:(IOBluetoothUserNotification*)notification fromDevice:(IOBluetoothDevice*)device {
+	if ([expectedDevice isEqual:device]) {
+		[notification unregister];
+		CFRunLoopStop(CFRunLoopGetCurrent());
+	}
+}
+@end
+
 int main(int argc, char *argv[]) {
 	if (!BTAvaliable()) {
 		io_puts(stderr, "Error: Bluetooth not available!");
@@ -528,6 +617,10 @@ int main(int argc, char *argv[]) {
 		arg_remove_favourite,
 
 		arg_format,
+
+		arg_wait_connect,
+		arg_wait_disconnect,
+		arg_wait_rssi,
 	};
 
 	const char* optstring = "p::d::hv";
@@ -549,6 +642,10 @@ int main(int argc, char *argv[]) {
 		{"remove-favourite", required_argument, NULL, arg_remove_favourite},
 
 		{"format",          required_argument, NULL, arg_format},
+
+		{"wait-connect",    required_argument, NULL, arg_wait_connect},
+		{"wait-disconnect", required_argument, NULL, arg_wait_disconnect},
+		{"wait-rssi",       required_argument, NULL, arg_wait_rssi},
 
 		{"help",            no_argument,       NULL, arg_help},
 		{"version",         no_argument,       NULL, arg_version},
@@ -607,6 +704,60 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
+			case arg_wait_connect:
+			case arg_wait_disconnect: {
+				char *timeout_arg = next_optarg(argc, argv);
+
+				if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, NULL)) {
+					eprintf("Expected numeric timeout, got: %s\n", timeout_arg);
+					return EXIT_FAILURE;
+				}
+
+			} break;
+			case arg_wait_rssi: {
+				char *op_arg = next_reqarg(argc, argv);
+
+				if (!op_arg) {
+					eprintf("%s: option `%s' requires 2nd argument\n", argv[0], argv[optind - 2]);
+					usage(stderr);
+					return EXIT_FAILURE;
+				} else if (!parse_op_arg(op_arg, NULL, NULL)) {
+					eprintf("Expected operator, got: %s\n", op_arg);
+					return EXIT_FAILURE;
+				}
+
+				char *value_arg = next_reqarg(argc, argv);
+
+				if (!value_arg) {
+					eprintf("%s: option `%s' requires 3rd argument\n", argv[0], argv[optind - 3]);
+					usage(stderr);
+					return EXIT_FAILURE;
+				} else if (!parse_signed_long_arg(value_arg, NULL)) {
+					eprintf("Expected numeric value, got: %s\n", value_arg);
+					return EXIT_FAILURE;
+				}
+
+				char *period_arg = next_optarg(argc, argv);
+
+				if (period_arg) {
+					unsigned long period;
+					if (!parse_unsigned_long_arg(period_arg, &period)) {
+						eprintf("Expected numeric period, got: %s\n", period_arg);
+						return EXIT_FAILURE;
+					} else if (period < 1) {
+						eprintf("Expected period to be at least 1, got: %ld\n", period);
+						return EXIT_FAILURE;
+					}
+				}
+
+				char *timeout_arg = next_optarg(argc, argv);
+
+				if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, NULL)) {
+					eprintf("Expected numeric timeout, got: %s\n", timeout_arg);
+					return EXIT_FAILURE;
+				}
+
+			} break;
 			case arg_version:
 				io_puts(stdout, VERSION);
 				return EXIT_SUCCESS;
@@ -749,6 +900,90 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
+			case arg_wait_connect:
+			case arg_wait_disconnect: {
+				IOBluetoothDevice* device = get_device(optarg);
+
+				unsigned long timeout = 0;
+				char *timeout_arg = next_optarg(argc, argv);
+				if (timeout_arg) parse_unsigned_long_arg(timeout_arg, &timeout);
+
+				@autoreleasepool {
+					DeviceNotificationRunLoopStopper *stopper = [[[DeviceNotificationRunLoopStopper alloc] initWithExpectedDevice:device] autorelease];
+
+					CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, 0, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
+						if (ch == arg_wait_connect) {
+							if ([device isConnected]) {
+								CFRunLoopStop(CFRunLoopGetCurrent());
+							} else {
+								[IOBluetoothDevice registerForConnectNotifications:stopper selector:@selector(notification:fromDevice:)];
+							}
+						} else {
+							if ([device isConnected]) {
+								[device registerForDisconnectNotification:stopper selector:@selector(notification:fromDevice:)];
+							} else {
+								CFRunLoopStop(CFRunLoopGetCurrent());
+							}
+						}
+					});
+					CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+
+					if (timeout > 0) {
+						if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, timeout, false)) {
+							eprintf("Timed out waiting for \"%s\" to %s\n", optarg, ch == arg_wait_connect ? "connect" : "disconnect");
+							return EXIT_FAILURE;
+						}
+					} else {
+						CFRunLoopRun();
+					}
+
+					CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+					CFRelease(timer);
+				}
+
+			} break;
+			case arg_wait_rssi: {
+				IOBluetoothDevice* device = get_device(optarg);
+
+				__block opFunc op;
+				__block char* op_name = NULL;
+				char *op_arg = next_reqarg(argc, argv);
+				parse_op_arg(op_arg, &op, &op_name);
+
+				__block long value;
+				char *value_arg = next_reqarg(argc, argv);
+				parse_signed_long_arg(value_arg, &value);
+
+				unsigned long period = 1;
+				char *period_arg = next_optarg(argc, argv);
+				if (period_arg) parse_unsigned_long_arg(period_arg, &period);
+
+				unsigned long timeout = 0;
+				char *timeout_arg = next_optarg(argc, argv);
+				if (timeout_arg) parse_unsigned_long_arg(timeout_arg, &timeout);
+
+				CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, period, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
+					long rssi = [device RSSI];
+					if (rssi == 127) rssi = -129;
+					if (op(rssi, value)) {
+						CFRunLoopStop(CFRunLoopGetCurrent());
+					}
+				});
+				CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+
+				if (timeout > 0) {
+					if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, timeout, false)) {
+						eprintf("Timed out waiting for rssi of \"%s\" to be %s %ld\n", optarg, op_name, value);
+						return EXIT_FAILURE;
+					}
+				} else {
+					CFRunLoopRun();
+				}
+
+				CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+				CFRelease(timer);
+
+			} break;
 		}
 	}
 
