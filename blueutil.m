@@ -259,29 +259,31 @@ void list_devices_new_default(NSArray *devices, bool first_only) {
 void list_devices_json(NSArray *devices, bool first_only, bool pretty) {
 	NSMutableArray *descriptions = [NSMutableArray arrayWithCapacity:[devices count]];
 
-	// https://stackoverflow.com/a/16254918/96823
-	NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-	[dateFormatter setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"]];
-	[dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
-	[dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssZZZZZ"];
+	@autoreleasepool {
+		// https://stackoverflow.com/a/16254918/96823
+		NSDateFormatter *dateFormatter = [[[NSDateFormatter alloc] init] autorelease];
+		[dateFormatter setLocale:[NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"]];
+		[dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
+		[dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssZZZZZ"];
 
-	for (IOBluetoothDevice* device in devices) {
-		NSMutableDictionary *description = [NSMutableDictionary dictionaryWithDictionary:@{
-			@"address": [device addressString],
-			@"name": [device name] ? [device name] : [NSNull null],
-			@"recentAccessDate": [device recentAccessDate] ? [dateFormatter stringFromDate:[device recentAccessDate]] : [NSNull null],
-			@"favourite": [device isFavorite] ? @(YES) : @(NO),
-			@"paired": [device isPaired] ? @(YES) : @(NO),
-			@"connected": [device isConnected] ? @(YES) : @(NO),
-		}];
+		for (IOBluetoothDevice* device in devices) {
+			NSMutableDictionary *description = [NSMutableDictionary dictionaryWithDictionary:@{
+				@"address": [device addressString],
+				@"name": [device name] ? [device name] : [NSNull null],
+				@"recentAccessDate": [device recentAccessDate] ? [dateFormatter stringFromDate:[device recentAccessDate]] : [NSNull null],
+				@"favourite": [device isFavorite] ? @(YES) : @(NO),
+				@"paired": [device isPaired] ? @(YES) : @(NO),
+				@"connected": [device isConnected] ? @(YES) : @(NO),
+			}];
 
-		if ([device isConnected]) {
-			description[@"slave"] = [device isIncoming] ? @(YES) : @(NO);
-			description[@"RSSI"] = [NSNumber numberWithChar:[device RSSI]];
-			description[@"rawRSSI"] = [NSNumber numberWithChar:[device rawRSSI]];
+			if ([device isConnected]) {
+				description[@"slave"] = [device isIncoming] ? @(YES) : @(NO);
+				description[@"RSSI"] = [NSNumber numberWithChar:[device RSSI]];
+				description[@"rawRSSI"] = [NSNumber numberWithChar:[device rawRSSI]];
+			}
+
+			[descriptions addObject:description];
 		}
-
-		[descriptions addObject:description];
 	}
 
 	NSOutputStream *stdout = [NSOutputStream outputStreamToFileAtPath:@"/dev/stdout" append:NO];
@@ -661,23 +663,25 @@ int main(int argc, char *argv[]) {
 				list_devices([IOBluetoothDevice pairedDevices], false);
 
 				break;
-			case arg_inquiry: {
-				IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:[[DeviceInquiryRunLoopStopper alloc] init]];
+			case arg_inquiry:
+				@autoreleasepool {
+					DeviceInquiryRunLoopStopper *stopper = [[[DeviceInquiryRunLoopStopper alloc] init] autorelease];
+					IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:stopper];
 
-				extend_optarg(argc, argv);
-				if (optarg) {
-					unsigned long t;
-					parse_unsigned_long_arg(optarg, &t);
-					[inquirer setInquiryLength:t];
+					extend_optarg(argc, argv);
+					if (optarg) {
+						unsigned long t;
+						parse_unsigned_long_arg(optarg, &t);
+						[inquirer setInquiryLength:t];
+					}
+
+					[inquirer start];
+					CFRunLoopRun();
+					[inquirer stop];
+
+					list_devices([inquirer foundDevices], false);
 				}
-
-				[inquirer start];
-				CFRunLoopRun();
-				[inquirer stop];
-
-				list_devices([inquirer foundDevices], false);
-
-			} break;
+				break;
 			case arg_recent: {
 				unsigned long n = 10;
 
@@ -709,27 +713,28 @@ int main(int argc, char *argv[]) {
 				}
 
 				break;
-			case arg_pair: {
-				IOBluetoothDevice* device = get_device(optarg);
-				DevicePairDelegate* delegate = [[DevicePairDelegate alloc] init];
-				IOBluetoothDevicePair *pairer = [IOBluetoothDevicePair pairWithDevice:device];
-				pairer.delegate = delegate;
+			case arg_pair:
+				@autoreleasepool {
+					IOBluetoothDevice* device = get_device(optarg);
+					DevicePairDelegate* delegate = [[[DevicePairDelegate alloc] init] autorelease];
+					IOBluetoothDevicePair *pairer = [IOBluetoothDevicePair pairWithDevice:device];
+					pairer.delegate = delegate;
 
-				delegate.requestedPin = next_optarg(argc, argv);
+					delegate.requestedPin = next_optarg(argc, argv);
 
-				if ([pairer start] != kIOReturnSuccess) {
-					eprintf("Failed to start pairing with \"%s\"\n", optarg);
-					return EXIT_FAILURE;
+					if ([pairer start] != kIOReturnSuccess) {
+						eprintf("Failed to start pairing with \"%s\"\n", optarg);
+						return EXIT_FAILURE;
+					}
+					CFRunLoopRun();
+					[pairer stop];
+
+					if (![device isPaired]) {
+						eprintf("Failed to pair \"%s\" with error 0x%02x (%s)\n", optarg, [delegate errorCode], [delegate errorDescription]);
+						return EXIT_FAILURE;
+					}
 				}
-				CFRunLoopRun();
-				[pairer stop];
-
-				if (![device isPaired]) {
-					eprintf("Failed to pair \"%s\" with error 0x%02x (%s)\n", optarg, [delegate errorCode], [delegate errorDescription]);
-					return EXIT_FAILURE;
-				}
-
-			} break;
+				break;
 			case arg_add_favourite:
 				if ([get_device(optarg) addToFavorites] != kIOReturnSuccess) {
 					eprintf("Failed to add \"%s\" to favourites\n", optarg);
