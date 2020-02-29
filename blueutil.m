@@ -27,10 +27,10 @@ int IOBluetoothPreferenceGetDiscoverableState();
 void IOBluetoothPreferenceSetDiscoverableState(int state);
 
 // short names
-typedef int (*getterFunc)();
-typedef bool (*setterFunc)(int);
+typedef int (*GetterFunc)();
+typedef bool (*SetterFunc)(int);
 
-bool BTSetParamState(int state, getterFunc getter, void (*setter)(int), const char *name) {
+bool BTSetParamState(int state, GetterFunc getter, void (*setter)(int), const char *name) {
 	if (state == getter()) return true;
 
 	setter(state);
@@ -348,9 +348,9 @@ void list_devices_json_pretty(NSArray *devices, bool first_only) {
 	list_devices_json(devices, first_only, true);
 }
 
-typedef void (*formatterFunc)(NSArray *, bool);
+typedef void (*FormatterFunc)(NSArray *, bool);
 
-bool parse_output_formatter(char *arg, formatterFunc *formatter) {
+bool parse_output_formatter(char *arg, FormatterFunc *formatter) {
 	if (0 == strcasecmp(arg, "default")) {
 		if (formatter) *formatter = list_devices_default;
 		return true;
@@ -549,7 +549,7 @@ bool op_le(long a, long b) { return a <= b; }
 bool op_eq(long a, long b) { return a == b; }
 bool op_ne(long a, long b) { return a != b; }
 
-typedef bool (*opFunc)(long a, long b);
+typedef bool (*OpFunc)(long a, long b);
 
 #define PARSE_OP_ARG_MATCHER(name, alt) \
 	if (0 == strcmp(arg, #name) || 0 == strcmp(arg, #alt)) { \
@@ -558,7 +558,7 @@ typedef bool (*opFunc)(long a, long b);
 		return true; \
 	}
 
-bool parse_op_arg(const char *arg, opFunc *op, const char **op_name) {
+bool parse_op_arg(const char *arg, OpFunc *op, const char **op_name) {
 	PARSE_OP_ARG_MATCHER(gt, >);
 	PARSE_OP_ARG_MATCHER(ge, >=);
 	PARSE_OP_ARG_MATCHER(lt, <);
@@ -653,7 +653,7 @@ int main(int argc, char *argv[]) {
 		{NULL, 0, NULL, 0}
 	};
 
-	formatterFunc list_devices = list_devices_default;
+	FormatterFunc list_devices = list_devices_default;
 
 	int ch;
 	while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
@@ -786,12 +786,12 @@ int main(int argc, char *argv[]) {
 			case arg_discoverable:
 				extend_optarg(argc, argv);
 				if (optarg) {
-					setterFunc setter = ch == 'p' ? BTSetPowerState : BTSetDiscoverableState;
+					SetterFunc setter = ch == 'p' ? BTSetPowerState : BTSetDiscoverableState;
 
 					int state;
 					parse_state_arg(optarg, &state);
 					if (state == -1) {
-						getterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
+						GetterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
 
 						state = !getter();
 					}
@@ -800,7 +800,7 @@ int main(int argc, char *argv[]) {
 						return EXIT_FAILURE;
 					}
 				} else {
-					getterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
+					GetterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
 
 					printf("%d\n", getter());
 				}
@@ -945,7 +945,7 @@ int main(int argc, char *argv[]) {
 			case arg_wait_rssi: {
 				IOBluetoothDevice* device = get_device(optarg);
 
-				__block opFunc op;
+				__block OpFunc op;
 				__block const char* op_name = NULL;
 				char *op_arg = next_reqarg(argc, argv);
 				parse_op_arg(op_arg, &op, &op_name);
