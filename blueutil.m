@@ -388,7 +388,7 @@ static inline bool is_caseabbr(const char* name, const char* str) {
 	return strncasecmp(name, str, length) == 0;
 }
 
-const char* hciErrorDescriptions[] = {
+const char* hci_error_descriptions[] = {
 	[0x01] = "Unknown HCI Command",
 	[0x02] = "No Connection",
 	[0x03] = "Hardware Failure",
@@ -460,10 +460,10 @@ const char* hciErrorDescriptions[] = {
 - (const char*)errorDescription {
 	if (
 		_errorCode >= 0 &&
-		(unsigned)_errorCode < sizeof(hciErrorDescriptions) / sizeof(hciErrorDescriptions[0]) &&
-		hciErrorDescriptions[_errorCode]
+		(unsigned)_errorCode < sizeof(hci_error_descriptions) / sizeof(hci_error_descriptions[0]) &&
+		hci_error_descriptions[_errorCode]
 	) {
-		return hciErrorDescriptions[_errorCode];
+		return hci_error_descriptions[_errorCode];
 	} else {
 		return "UNKNOWN ERROR";
 	}
