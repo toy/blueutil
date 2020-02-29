@@ -30,7 +30,7 @@ void IOBluetoothPreferenceSetDiscoverableState(int state);
 typedef int (*getterFunc)();
 typedef bool (*setterFunc)(int);
 
-bool BTSetParamState(int state, getterFunc getter, void (*setter)(int), char *name) {
+bool BTSetParamState(int state, getterFunc getter, void (*setter)(int), const char *name) {
 	if (state == getter()) return true;
 
 	setter(state);
@@ -59,7 +59,7 @@ bool BTSetDiscoverableState(int state) {
 #define io_puts(io, string) fputs (string"\n", io)
 
 void usage(FILE *io) {
-	io_puts(io, "blueutil v"VERSION);
+	io_puts(io, "blueutil v" VERSION);
 	io_puts(io, "");
 	io_puts(io, "Usage:");
 	io_puts(io, "  blueutil [options]");
@@ -558,7 +558,7 @@ typedef bool (*opFunc)(long a, long b);
 		return true; \
 	}
 
-bool parse_op_arg(char *arg, opFunc *op, char **op_name) {
+bool parse_op_arg(const char *arg, opFunc *op, const char **op_name) {
 	PARSE_OP_ARG_MATCHER(gt, >);
 	PARSE_OP_ARG_MATCHER(ge, >=);
 	PARSE_OP_ARG_MATCHER(lt, <);
@@ -946,7 +946,7 @@ int main(int argc, char *argv[]) {
 				IOBluetoothDevice* device = get_device(optarg);
 
 				__block opFunc op;
-				__block char* op_name = NULL;
+				__block const char* op_name = NULL;
 				char *op_arg = next_reqarg(argc, argv);
 				parse_op_arg(op_arg, &op, &op_name);
 
