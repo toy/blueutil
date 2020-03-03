@@ -59,53 +59,59 @@ bool BTSetDiscoverableState(int state) {
 #define io_puts(io, string) fputs (string"\n", io)
 
 void usage(FILE *io) {
-  io_puts(io, "blueutil v" VERSION);
-  io_puts(io, "");
-  io_puts(io, "Usage:");
-  io_puts(io, "  blueutil [options]");
-  io_puts(io, "");
-  io_puts(io, "Without options outputs current state");
-  io_puts(io, "");
-  io_puts(io, "    -p, --power               output power state as 1 or 0");
-  io_puts(io, "    -p, --power STATE         set power state");
-  io_puts(io, "    -d, --discoverable        output discoverable state as 1 or 0");
-  io_puts(io, "    -d, --discoverable STATE  set discoverable state");
-  io_puts(io, "");
-  io_puts(io, "        --favourites          list favourite devices");
-  io_puts(io, "        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates");
-  io_puts(io, "        --paired              list paired devices");
-  io_puts(io, "        --recent [N]          list recently used devices, 10 by default");
-  io_puts(io, "");
-  io_puts(io, "        --info ID             show information about device");
-  io_puts(io, "        --is-connected ID     connected state of device as 1 or 0");
-  io_puts(io, "        --connect ID          create a connection to device");
-  io_puts(io, "        --disconnect ID       close the connection to device");
-  io_puts(io, "        --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode");
-  io_puts(io, "        --add-favourite ID    add to favourites");
-  io_puts(io, "        --remove-favourite ID remove from favourites");
-  io_puts(io, "");
-  io_puts(io, "        --format FORMAT       change output format of info and all listing commands");
-  io_puts(io, "");
-  io_puts(io, "        --wait-connect ID [TIMEOUT]");
-  io_puts(io, "                              EXPERIMENTAL wait for device to connect");
-  io_puts(io, "        --wait-disconnect ID [TIMEOUT]");
-  io_puts(io, "                              EXPERIMENTAL wait for device to disconnect");
-  io_puts(io, "        --wait-rssi ID OP VALUE [PERIOD [TIMEOUT]]");
-  io_puts(io, "                              EXPERIMENTAL wait for device RSSI value which is 0 for golden range, -129 if it cannot be read (e.g. device is disconnected)");
-  io_puts(io, "");
-  io_puts(io, "    -h, --help                this help");
-  io_puts(io, "    -v, --version             show version");
-  io_puts(io, "");
-  io_puts(io, "STATE can be one of: 1, on, 0, off, toggle");
-  io_puts(io, "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices");
-  io_puts(io, "OP can be one of: >, >=, <, <=, =, !=; or equivalents: gt, ge, lt, le, eq, ne");
-  io_puts(io, "PERIOD is in seconds, defaults to 1");
-  io_puts(io, "TIMEOUT is in seconds, default value 0 doesn't add timeout");
-  io_puts(io, "FORMAT can be one of:");
-  io_puts(io, "  default - human readable text output not intended for consumption by scripts");
-  io_puts(io, "  new-default - human readable comma separated key-value pairs (EXPERIMENTAL, THE BEHAVIOUR MAY CHANGE)");
-  io_puts(io, "  json - compact JSON");
-  io_puts(io, "  json-pretty - pretty printed JSON");
+  static const char* lines[] = {
+    "blueutil v" VERSION,
+    "",
+    "Usage:",
+    "  blueutil [options]",
+    "",
+    "Without options outputs current state",
+    "",
+    "    -p, --power               output power state as 1 or 0",
+    "    -p, --power STATE         set power state",
+    "    -d, --discoverable        output discoverable state as 1 or 0",
+    "    -d, --discoverable STATE  set discoverable state",
+    "",
+    "        --favourites          list favourite devices",
+    "        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates",
+    "        --paired              list paired devices",
+    "        --recent [N]          list recently used devices, 10 by default",
+    "",
+    "        --info ID             show information about device",
+    "        --is-connected ID     connected state of device as 1 or 0",
+    "        --connect ID          create a connection to device",
+    "        --disconnect ID       close the connection to device",
+    "        --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode",
+    "        --add-favourite ID    add to favourites",
+    "        --remove-favourite ID remove from favourites",
+    "",
+    "        --format FORMAT       change output format of info and all listing commands",
+    "",
+    "        --wait-connect ID [TIMEOUT]",
+    "                              EXPERIMENTAL wait for device to connect",
+    "        --wait-disconnect ID [TIMEOUT]",
+    "                              EXPERIMENTAL wait for device to disconnect",
+    "        --wait-rssi ID OP VALUE [PERIOD [TIMEOUT]]",
+    "                              EXPERIMENTAL wait for device RSSI value which is 0 for golden range, -129 if it cannot be read (e.g. device is disconnected)",
+    "",
+    "    -h, --help                this help",
+    "    -v, --version             show version",
+    "",
+    "STATE can be one of: 1, on, 0, off, toggle",
+    "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices",
+    "OP can be one of: >, >=, <, <=, =, !=; or equivalents: gt, ge, lt, le, eq, ne",
+    "PERIOD is in seconds, defaults to 1",
+    "TIMEOUT is in seconds, default value 0 doesn't add timeout",
+    "FORMAT can be one of:",
+    "  default - human readable text output not intended for consumption by scripts",
+    "  new-default - human readable comma separated key-value pairs (EXPERIMENTAL, THE BEHAVIOUR MAY CHANGE)",
+    "  json - compact JSON",
+    "  json-pretty - pretty printed JSON",
+  };
+
+  for (size_t i = 0, _i = sizeof(lines) / sizeof(lines[0]); i < _i; i++) {
+    fprintf(io, "%s\n", lines[i]);
+  }
 }
 
 char *next_arg(int argc, char *argv[], bool required) {
