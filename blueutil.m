@@ -56,10 +56,10 @@ bool BTSetDiscoverableState(int state) {
   return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable");
 }
 
-#define io_puts(io, string) fputs (string"\n", io)
+#define io_puts(io, string) fputs(string "\n", io)
 
 void usage(FILE *io) {
-  static const char* lines[] = {
+  static const char *lines[] = {
     "blueutil v" VERSION,
     "",
     "Usage:",
@@ -115,14 +115,7 @@ void usage(FILE *io) {
 }
 
 char *next_arg(int argc, char *argv[], bool required) {
-  if (
-    optind < argc &&
-    NULL != argv[optind] &&
-    (
-      required ||
-      '-' != argv[optind][0]
-    )
-  ) {
+  if (optind < argc && NULL != argv[optind] && (required || '-' != argv[optind][0])) {
     return argv[optind++];
   } else {
     return NULL;
@@ -144,25 +137,17 @@ void extend_optarg(int argc, char *argv[]) {
 }
 
 bool parse_state_arg(char *arg, int *state) {
-  if (
-    0 == strcasecmp(arg, "1") ||
-    0 == strcasecmp(arg, "on")
-  ) {
+  if (0 == strcasecmp(arg, "1") || 0 == strcasecmp(arg, "on")) {
     if (state) *state = 1;
     return true;
   }
 
-  if (
-    0 == strcasecmp(arg, "0") ||
-    0 == strcasecmp(arg, "off")
-  ) {
+  if (0 == strcasecmp(arg, "0") || 0 == strcasecmp(arg, "off")) {
     if (state) *state = 0;
     return true;
   }
 
-  if (
-    0 == strcasecmp(arg, "toggle")
-  ) {
+  if (0 == strcasecmp(arg, "toggle")) {
     if (state) *state = -1;
     return true;
   }
@@ -173,7 +158,10 @@ bool parse_state_arg(char *arg, int *state) {
 bool check_device_address_arg(char *arg) {
   regex_t regex;
 
-  if (0 != regcomp(&regex, "^[0-9a-f]{2}([0-9a-f]{10}|(-[0-9a-f]{2}){5}|(:[0-9a-f]{2}){5})$", REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
+  if (0 !=
+    regcomp(&regex,
+      "^[0-9a-f]{2}([0-9a-f]{10}|(-[0-9a-f]{2}){5}|(:[0-9a-f]{2}){5})$",
+      REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
     eprintf("Failed compiling regex");
     exit(EXIT_FAILURE);
   }
@@ -276,7 +264,7 @@ IOBluetoothDevice *get_device(char *id) {
 }
 
 void list_devices_default(NSArray *devices, bool first_only) {
-  for (IOBluetoothDevice* device in devices) {
+  for (IOBluetoothDevice *device in devices) {
     printf("address: %s", [[device addressString] UTF8String]);
     if ([device isConnected]) {
       printf(", connected (%s, %d dBm)", [device isIncoming] ? "slave" : "master", [device rawRSSI]);
@@ -286,7 +274,8 @@ void list_devices_default(NSArray *devices, bool first_only) {
     printf(", %s", [device isFavorite] ? "favourite" : "not favourite");
     printf(", %s", [device isPaired] ? "paired" : "not paired");
     printf(", name: \"%s\"", [device name] ? [[device name] UTF8String] : "-");
-    printf(", recent access date: %s", [device recentAccessDate] ? [[[device recentAccessDate] description] UTF8String] : "-");
+    printf(", recent access date: %s",
+      [device recentAccessDate] ? [[[device recentAccessDate] description] UTF8String] : "-");
     printf("\n");
     if (first_only) break;
   }
@@ -294,14 +283,20 @@ void list_devices_default(NSArray *devices, bool first_only) {
 
 void list_devices_new_default(NSArray *devices, bool first_only) {
   const char *separator = first_only ? "\n" : ", ";
-  for (IOBluetoothDevice* device in devices) {
+  for (IOBluetoothDevice *device in devices) {
     printf("address: %s%s", [[device addressString] UTF8String], separator);
-    printf("recent access: %s%s", [device recentAccessDate] ? [[[device recentAccessDate] description] UTF8String] : "-", separator);
+    printf("recent access: %s%s",
+      [device recentAccessDate] ? [[[device recentAccessDate] description] UTF8String] : "-",
+      separator);
     printf("favourite: %s%s", [device isFavorite] ? "yes" : "no", separator);
     printf("paired: %s%s", [device isPaired] ? "yes" : "no", separator);
     printf("connected: %s%s", [device isConnected] ? ([device isIncoming] ? "slave" : "master") : "no", separator);
-    printf("rssi: %s%s", [device isConnected] ? [[NSString stringWithFormat: @"%d", [device RSSI]] UTF8String] : "-", separator);
-    printf("raw rssi: %s%s", [device isConnected] ? [[NSString stringWithFormat: @"%d", [device rawRSSI]] UTF8String] : "-", separator);
+    printf("rssi: %s%s",
+      [device isConnected] ? [[NSString stringWithFormat:@"%d", [device RSSI]] UTF8String] : "-",
+      separator);
+    printf("raw rssi: %s%s",
+      [device isConnected] ? [[NSString stringWithFormat:@"%d", [device rawRSSI]] UTF8String] : "-",
+      separator);
     printf("name: %s\n", [device name] ? [[device name] UTF8String] : "-");
     if (first_only) break;
   }
@@ -317,11 +312,12 @@ void list_devices_json(NSArray *devices, bool first_only, bool pretty) {
     [dateFormatter setCalendar:[NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian]];
     [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssZZZZZ"];
 
-    for (IOBluetoothDevice* device in devices) {
+    for (IOBluetoothDevice *device in devices) {
       NSMutableDictionary *description = [NSMutableDictionary dictionaryWithDictionary:@{
         @"address": [device addressString],
         @"name": [device name] ? [device name] : [NSNull null],
-        @"recentAccessDate": [device recentAccessDate] ? [dateFormatter stringFromDate:[device recentAccessDate]] : [NSNull null],
+        @"recentAccessDate": [device recentAccessDate] ? [dateFormatter stringFromDate:[device recentAccessDate]]
+                                                       : [NSNull null],
         @"favourite": [device isFavorite] ? @(YES) : @(NO),
         @"paired": [device isPaired] ? @(YES) : @(NO),
         @"connected": [device isConnected] ? @(YES) : @(NO),
@@ -339,7 +335,9 @@ void list_devices_json(NSArray *devices, bool first_only, bool pretty) {
 
   NSOutputStream *stdout = [NSOutputStream outputStreamToFileAtPath:@"/dev/stdout" append:NO];
   [stdout open];
-  [NSJSONSerialization writeJSONObject:(first_only ? [descriptions firstObject] : descriptions) toStream:stdout options:(pretty ? NSJSONWritingPrettyPrinted : 0) error:NULL];
+  id object = first_only ? [descriptions firstObject] : descriptions;
+  NSJSONWritingOptions options = pretty ? NSJSONWritingPrettyPrinted : 0;
+  [NSJSONSerialization writeJSONObject:object toStream:stdout options:options error:NULL];
   if (pretty) {
     [stdout write:(const uint8_t *)"\n" maxLength:1];
   }
@@ -383,18 +381,20 @@ bool parse_output_formatter(char *arg, FormatterFunc *formatter) {
 @interface DeviceInquiryRunLoopStopper : NSObject <IOBluetoothDeviceInquiryDelegate>
 @end
 @implementation DeviceInquiryRunLoopStopper
-- (void)deviceInquiryComplete:(__unused IOBluetoothDeviceInquiry *)sender error:(__unused IOReturn)error aborted:(__unused BOOL)aborted {
+- (void)deviceInquiryComplete:(__unused IOBluetoothDeviceInquiry *)sender
+                        error:(__unused IOReturn)error
+                      aborted:(__unused BOOL)aborted {
   CFRunLoopStop(CFRunLoopGetCurrent());
 }
 @end
 
-static inline bool is_caseabbr(const char* name, const char* str) {
+static inline bool is_caseabbr(const char *name, const char *str) {
   size_t length = strlen(str);
   if (length < 1) length = 1;
   return strncasecmp(name, str, length) == 0;
 }
 
-const char* hci_error_descriptions[] = {
+const char *hci_error_descriptions[] = {
   [0x01] = "Unknown HCI Command",
   [0x02] = "No Connection",
   [0x03] = "Hardware Failure",
@@ -460,15 +460,12 @@ const char* hci_error_descriptions[] = {
 
 @interface DevicePairDelegate : NSObject <IOBluetoothDevicePairDelegate>
 @property (readonly) IOReturn errorCode;
-@property char* requestedPin;
+@property char *requestedPin;
 @end
 @implementation DevicePairDelegate
-- (const char*)errorDescription {
-  if (
-    _errorCode >= 0 &&
-    (unsigned)_errorCode < sizeof(hci_error_descriptions) / sizeof(hci_error_descriptions[0]) &&
-    hci_error_descriptions[_errorCode]
-  ) {
+- (const char *)errorDescription {
+  if (_errorCode >= 0 && (unsigned)_errorCode < sizeof(hci_error_descriptions) / sizeof(hci_error_descriptions[0]) &&
+    hci_error_descriptions[_errorCode]) {
     return hci_error_descriptions[_errorCode];
   } else {
     return "UNKNOWN ERROR";
@@ -485,22 +482,18 @@ const char* hci_error_descriptions[] = {
   ByteCount pinCodeSize;
 
   if (_requestedPin) {
-    eprintf(
-      "Input pin %.16s on \"%s\" (%s)\n",
+    eprintf("Input pin %.16s on \"%s\" (%s)\n",
       _requestedPin,
       [[[sender device] name] UTF8String],
-      [[[sender device] addressString] UTF8String]
-    );
+      [[[sender device] addressString] UTF8String]);
 
     pinCodeSize = strlen(_requestedPin);
     if (pinCodeSize > 16) pinCodeSize = 16;
     strncpy((char *)pinCode.data, _requestedPin, pinCodeSize);
   } else {
-    eprintf(
-      "Type pin code (up to 16 characters) for \"%s\" (%s) and press Enter: ",
+    eprintf("Type pin code (up to 16 characters) for \"%s\" (%s) and press Enter: ",
       [[[sender device] name] UTF8String],
-      [[[sender device] addressString] UTF8String]
-    );
+      [[[sender device] addressString] UTF8String]);
 
     uint input_size = 16 + 2;
     char input[input_size];
@@ -515,12 +508,10 @@ const char* hci_error_descriptions[] = {
 }
 
 - (void)devicePairingUserConfirmationRequest:(id)sender numericValue:(BluetoothNumericValue)numericValue {
-  eprintf(
-    "Does \"%s\" (%s) display number %06u (yes/no)? ",
+  eprintf("Does \"%s\" (%s) display number %06u (yes/no)? ",
     [[[sender device] name] UTF8String],
     [[[sender device] addressString] UTF8String],
-    numericValue
-  );
+    numericValue);
 
   uint input_size = 3 + 2;
   char input[input_size];
@@ -539,12 +530,10 @@ const char* hci_error_descriptions[] = {
 }
 
 - (void)devicePairingUserPasskeyNotification:(id)sender passkey:(BluetoothPasskey)passkey {
-  eprintf(
-    "Input passkey %06u on \"%s\" (%s)\n",
+  eprintf("Input passkey %06u on \"%s\" (%s)\n",
     passkey,
     [[[sender device] name] UTF8String],
-    [[[sender device] addressString] UTF8String]
-  );
+    [[[sender device] addressString] UTF8String]);
 }
 @end
 
@@ -560,11 +549,11 @@ OP_FUNC(ne, !=);
 
 typedef bool (*OpFunc)(long a, long b);
 
-#define PARSE_OP_ARG_MATCHER(name, operator) \
+#define PARSE_OP_ARG_MATCHER(name, operator)                    \
   if (0 == strcmp(arg, #name) || 0 == strcmp(arg, #operator)) { \
-    if (op) *op = op_ ## name; \
-    if (op_name) *op_name = #operator; \
-    return true; \
+    if (op) *op = op_##name;                                    \
+    if (op_name) *op_name = #operator;                          \
+    return true;                                                \
   }
 
 bool parse_op_arg(const char *arg, OpFunc *op, const char **op_name) {
@@ -587,7 +576,7 @@ bool parse_op_arg(const char *arg, OpFunc *op, const char **op_name) {
   expectedDevice = device;
   return self;
 }
-- (void)notification:(IOBluetoothUserNotification*)notification fromDevice:(IOBluetoothDevice*)device {
+- (void)notification:(IOBluetoothUserNotification *)notification fromDevice:(IOBluetoothDevice *)device {
   if ([expectedDevice isEqual:device]) {
     [notification unregister];
     CFRunLoopStop(CFRunLoopGetCurrent());
@@ -632,7 +621,8 @@ int main(int argc, char *argv[]) {
     arg_wait_rssi,
   };
 
-  const char* optstring = "p::d::hv";
+  const char *optstring = "p::d::hv";
+  // clang-format off
   static struct option long_options[] = {
     {"power",           optional_argument, NULL, arg_power},
     {"discoverable",    optional_argument, NULL, arg_discoverable},
@@ -661,6 +651,7 @@ int main(int argc, char *argv[]) {
 
     {NULL, 0, NULL, 0}
   };
+  // clang-format on
 
   FormatterFunc list_devices = list_devices_default;
 
@@ -701,7 +692,9 @@ int main(int argc, char *argv[]) {
         char *requested_pin = next_optarg(argc, argv);
 
         if (requested_pin && strlen(requested_pin) > 16) {
-          eprintf("Pairing pin can't be longer than 16 characters, got %lu (%s)\n", strlen(requested_pin), requested_pin);
+          eprintf("Pairing pin can't be longer than 16 characters, got %lu (%s)\n",
+            strlen(requested_pin),
+            requested_pin);
           return EXIT_FAILURE;
         }
 
@@ -875,8 +868,8 @@ int main(int argc, char *argv[]) {
         break;
       case arg_pair:
         @autoreleasepool {
-          IOBluetoothDevice* device = get_device(optarg);
-          DevicePairDelegate* delegate = [[[DevicePairDelegate alloc] init] autorelease];
+          IOBluetoothDevice *device = get_device(optarg);
+          DevicePairDelegate *delegate = [[[DevicePairDelegate alloc] init] autorelease];
           IOBluetoothDevicePair *pairer = [IOBluetoothDevicePair pairWithDevice:device];
           pairer.delegate = delegate;
 
@@ -890,7 +883,10 @@ int main(int argc, char *argv[]) {
           [pairer stop];
 
           if (![device isPaired]) {
-            eprintf("Failed to pair \"%s\" with error 0x%02x (%s)\n", optarg, [delegate errorCode], [delegate errorDescription]);
+            eprintf("Failed to pair \"%s\" with error 0x%02x (%s)\n",
+              optarg,
+              [delegate errorCode],
+              [delegate errorDescription]);
             return EXIT_FAILURE;
           }
         }
@@ -911,35 +907,40 @@ int main(int argc, char *argv[]) {
         break;
       case arg_wait_connect:
       case arg_wait_disconnect: {
-        IOBluetoothDevice* device = get_device(optarg);
+        IOBluetoothDevice *device = get_device(optarg);
 
         unsigned long timeout = 0;
         char *timeout_arg = next_optarg(argc, argv);
         if (timeout_arg) parse_unsigned_long_arg(timeout_arg, &timeout);
 
         @autoreleasepool {
-          DeviceNotificationRunLoopStopper *stopper = [[[DeviceNotificationRunLoopStopper alloc] initWithExpectedDevice:device] autorelease];
+          DeviceNotificationRunLoopStopper *stopper =
+            [[[DeviceNotificationRunLoopStopper alloc] initWithExpectedDevice:device] autorelease];
 
-          CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, 0, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
-            if (ch == arg_wait_connect) {
-              if ([device isConnected]) {
-                CFRunLoopStop(CFRunLoopGetCurrent());
+          CFRunLoopTimerRef timer =
+            CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, 0, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
+              if (ch == arg_wait_connect) {
+                if ([device isConnected]) {
+                  CFRunLoopStop(CFRunLoopGetCurrent());
+                } else {
+                  [IOBluetoothDevice registerForConnectNotifications:stopper
+                                                            selector:@selector(notification:fromDevice:)];
+                }
               } else {
-                [IOBluetoothDevice registerForConnectNotifications:stopper selector:@selector(notification:fromDevice:)];
+                if ([device isConnected]) {
+                  [device registerForDisconnectNotification:stopper selector:@selector(notification:fromDevice:)];
+                } else {
+                  CFRunLoopStop(CFRunLoopGetCurrent());
+                }
               }
-            } else {
-              if ([device isConnected]) {
-                [device registerForDisconnectNotification:stopper selector:@selector(notification:fromDevice:)];
-              } else {
-                CFRunLoopStop(CFRunLoopGetCurrent());
-              }
-            }
-          });
+            });
           CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
 
           if (timeout > 0) {
             if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, timeout, false)) {
-              eprintf("Timed out waiting for \"%s\" to %s\n", optarg, ch == arg_wait_connect ? "connect" : "disconnect");
+              eprintf("Timed out waiting for \"%s\" to %s\n",
+                optarg,
+                ch == arg_wait_connect ? "connect" : "disconnect");
               return EXIT_FAILURE;
             }
           } else {
@@ -952,10 +953,10 @@ int main(int argc, char *argv[]) {
 
       } break;
       case arg_wait_rssi: {
-        IOBluetoothDevice* device = get_device(optarg);
+        IOBluetoothDevice *device = get_device(optarg);
 
         __block OpFunc op;
-        __block const char* op_name = NULL;
+        __block const char *op_name = NULL;
         char *op_arg = next_reqarg(argc, argv);
         parse_op_arg(op_arg, &op, &op_name);
 
@@ -971,13 +972,14 @@ int main(int argc, char *argv[]) {
         char *timeout_arg = next_optarg(argc, argv);
         if (timeout_arg) parse_unsigned_long_arg(timeout_arg, &timeout);
 
-        CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, period, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
-          long rssi = [device RSSI];
-          if (rssi == 127) rssi = -129;
-          if (op(rssi, value)) {
-            CFRunLoopStop(CFRunLoopGetCurrent());
-          }
-        });
+        CFRunLoopTimerRef timer =
+          CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, period, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
+            long rssi = [device RSSI];
+            if (rssi == 127) rssi = -129;
+            if (op(rssi, value)) {
+              CFRunLoopStop(CFRunLoopGetCurrent());
+            }
+          });
         CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
 
         if (timeout > 0) {

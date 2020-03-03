@@ -1,0 +1,18 @@
+---
+Language: ObjC
+BasedOnStyle: google
+
+AlignAfterOpenBracket: DontAlign
+AlignOperands: false
+AllowAllArgumentsOnNextLine: false
+AllowShortFunctionsOnASingleLine: Inline
+BinPackArguments: false
+BreakStringLiterals: false
+ColumnLimit: 120
+ConstructorInitializerIndentWidth: 2
+ContinuationIndentWidth: 2
+NamespaceIndentation: All
+ObjCSpaceAfterProperty: true
+SpacesInContainerLiterals: false
+TabWidth: 2
+...
