@@ -542,19 +542,22 @@ const char* hci_error_descriptions[] = {
 }
 @end
 
-bool op_gt(long a, long b) { return a > b; }
-bool op_ge(long a, long b) { return a >= b; }
-bool op_lt(long a, long b) { return a < b; }
-bool op_le(long a, long b) { return a <= b; }
-bool op_eq(long a, long b) { return a == b; }
-bool op_ne(long a, long b) { return a != b; }
+#define OP_FUNC(name, operator) \
+  bool op_##name(long a, long b) { return a operator b; }
+
+OP_FUNC(gt, >);
+OP_FUNC(ge, >=);
+OP_FUNC(lt, <);
+OP_FUNC(le, <=);
+OP_FUNC(eq, =);
+OP_FUNC(ne, !=);
 
 typedef bool (*OpFunc)(long a, long b);
 
-#define PARSE_OP_ARG_MATCHER(name, alt) \
-  if (0 == strcmp(arg, #name) || 0 == strcmp(arg, #alt)) { \
+#define PARSE_OP_ARG_MATCHER(name, operator) \
+  if (0 == strcmp(arg, #name) || 0 == strcmp(arg, #operator)) { \
     if (op) *op = op_ ## name; \
-    if (op_name) *op_name = #alt; \
+    if (op_name) *op_name = #operator; \
     return true; \
   }
 
