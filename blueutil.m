@@ -56,8 +56,6 @@ bool BTSetDiscoverableState(int state) {
   return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable");
 }
 
-#define io_puts(io, string) fputs(string "\n", io)
-
 void usage(FILE *io) {
   static const char *lines[] = {
     "blueutil v" VERSION,
@@ -586,7 +584,7 @@ bool parse_op_arg(const char *arg, OpFunc *op, const char **op_name) {
 
 int main(int argc, char *argv[]) {
   if (!BTAvaliable()) {
-    io_puts(stderr, "Error: Bluetooth not available!");
+    eprintf("Error: Bluetooth not available!\n");
     return EXIT_FAILURE;
   }
 
@@ -761,7 +759,7 @@ int main(int argc, char *argv[]) {
 
       } break;
       case arg_version:
-        io_puts(stdout, VERSION);
+        printf(VERSION "\n");
         return EXIT_SUCCESS;
       case arg_help:
         usage(stdout);
