@@ -134,19 +134,25 @@ void extend_optarg(int argc, char *argv[]) {
   if (!optarg) optarg = next_optarg(argc, argv);
 }
 
-bool parse_state_arg(char *arg, int *state) {
+enum state {
+  toggle = -1,
+  off = 0,
+  on = 1,
+};
+
+bool parse_state_arg(char *arg, enum state *state) {
   if (0 == strcasecmp(arg, "1") || 0 == strcasecmp(arg, "on")) {
-    if (state) *state = 1;
+    if (state) *state = on;
     return true;
   }
 
   if (0 == strcasecmp(arg, "0") || 0 == strcasecmp(arg, "off")) {
-    if (state) *state = 0;
+    if (state) *state = off;
     return true;
   }
 
   if (0 == strcasecmp(arg, "toggle")) {
-    if (state) *state = -1;
+    if (state) *state = toggle;
     return true;
   }
 
@@ -788,9 +794,9 @@ int main(int argc, char *argv[]) {
         if (optarg) {
           SetterFunc setter = ch == 'p' ? BTSetPowerState : BTSetDiscoverableState;
 
-          int state;
+          enum state state;
           parse_state_arg(optarg, &state);
-          if (state == -1) {
+          if (state == toggle) {
             GetterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
 
             state = !getter();
