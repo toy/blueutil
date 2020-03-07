@@ -659,9 +659,9 @@ int main(int argc, char *argv[]) {
 
   FormatterFunc list_devices = list_devices_default;
 
-  int ch;
-  while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
-    switch (ch) {
+  int arg;
+  while ((arg = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
+    switch (arg) {
       case arg_power:
       case arg_discoverable: {
         extend_optarg(argc, argv);
@@ -783,18 +783,18 @@ int main(int argc, char *argv[]) {
   }
 
   optind = 1;
-  while ((ch = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
-    switch (ch) {
+  while ((arg = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
+    switch (arg) {
       case arg_power:
       case arg_discoverable: {
         extend_optarg(argc, argv);
         if (optarg) {
-          SetterFunc setter = ch == 'p' ? BTSetPowerState : BTSetDiscoverableState;
+          SetterFunc setter = arg == 'p' ? BTSetPowerState : BTSetDiscoverableState;
 
           enum state state;
           parse_state_arg(optarg, &state);
           if (state == toggle) {
-            GetterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
+            GetterFunc getter = arg == 'p' ? BTPowerState : BTDiscoverableState;
 
             state = !getter();
           }
@@ -803,7 +803,7 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
           }
         } else {
-          GetterFunc getter = ch == 'p' ? BTPowerState : BTDiscoverableState;
+          GetterFunc getter = arg == 'p' ? BTPowerState : BTDiscoverableState;
 
           printf("%d\n", getter());
         }
@@ -906,7 +906,7 @@ int main(int argc, char *argv[]) {
 
           CFRunLoopTimerRef timer =
             CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, 0, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
-              if (ch == arg_wait_connect) {
+              if (arg == arg_wait_connect) {
                 if ([device isConnected]) {
                   CFRunLoopStop(CFRunLoopGetCurrent());
                 } else {
@@ -927,7 +927,7 @@ int main(int argc, char *argv[]) {
             if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, timeout, false)) {
               eprintf("Timed out waiting for \"%s\" to %s\n",
                 optarg,
-                ch == arg_wait_connect ? "connect" : "disconnect");
+                arg == arg_wait_connect ? "connect" : "disconnect");
               return EXIT_FAILURE;
             }
           } else {
