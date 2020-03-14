@@ -142,17 +142,17 @@ enum state {
 
 bool parse_state_arg(char *arg, enum state *state) {
   if (0 == strcasecmp(arg, "1") || 0 == strcasecmp(arg, "on")) {
-    if (state) *state = on;
+    *state = on;
     return true;
   }
 
   if (0 == strcasecmp(arg, "0") || 0 == strcasecmp(arg, "off")) {
-    if (state) *state = off;
+    *state = off;
     return true;
   }
 
   if (0 == strcasecmp(arg, "toggle")) {
-    if (state) *state = toggle;
+    *state = toggle;
     return true;
   }
 
@@ -199,7 +199,7 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
 
   switch (result) {
     case 0:
-      if (number) *number = strtoul(arg, NULL, 10);
+      *number = strtoul(arg, NULL, 10);
       return true;
     case REG_NOMATCH:
       return false;
@@ -223,7 +223,7 @@ bool parse_signed_long_arg(char *arg, long *number) {
 
   switch (result) {
     case 0:
-      if (number) *number = strtol(arg, NULL, 10);
+      *number = strtol(arg, NULL, 10);
       return true;
     case REG_NOMATCH:
       return false;
@@ -360,22 +360,22 @@ typedef void (*FormatterFunc)(NSArray *, bool);
 
 bool parse_output_formatter(char *arg, FormatterFunc *formatter) {
   if (0 == strcasecmp(arg, "default")) {
-    if (formatter) *formatter = list_devices_default;
+    *formatter = list_devices_default;
     return true;
   }
 
   if (0 == strcasecmp(arg, "new-default")) {
-    if (formatter) *formatter = list_devices_new_default;
+    *formatter = list_devices_new_default;
     return true;
   }
 
   if (0 == strcasecmp(arg, "json")) {
-    if (formatter) *formatter = list_devices_json_default;
+    *formatter = list_devices_json_default;
     return true;
   }
 
   if (0 == strcasecmp(arg, "json-pretty")) {
-    if (formatter) *formatter = list_devices_json_pretty;
+    *formatter = list_devices_json_pretty;
     return true;
   }
 
@@ -555,8 +555,8 @@ typedef bool (*OpFunc)(long a, long b);
 
 #define PARSE_OP_ARG_MATCHER(name, operator)                    \
   if (0 == strcmp(arg, #name) || 0 == strcmp(arg, #operator)) { \
-    if (op) *op = op_##name;                                    \
-    if (op_name) *op_name = #operator;                          \
+    *op = op_##name;                                            \
+    *op_name = #operator;                                       \
     return true;                                                \
   }
 
