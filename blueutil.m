@@ -73,7 +73,7 @@ void usage(FILE *io) {
     "        --favourites          list favourite devices",
     "        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates",
     "        --paired              list paired devices",
-    "        --recent [N]          list recently used devices, 10 by default",
+    "        --recent [N]          list recently used devices, 10 by default, 0 to list all",
     "",
     "        --info ID             show information about device",
     "        --is-connected ID     connected state of device as 1 or 0",
