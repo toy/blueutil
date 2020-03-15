@@ -30,7 +30,15 @@ void IOBluetoothPreferenceSetDiscoverableState(int state);
 typedef int (*GetterFunc)();
 typedef bool (*SetterFunc)(int);
 
-bool BTSetParamState(int state, GetterFunc getter, void (*setter)(int), const char *name) {
+enum state {
+  toggle = -1,
+  off = 0,
+  on = 1,
+};
+
+bool BTSetParamState(enum state state, GetterFunc getter, void (*setter)(int), const char *name) {
+  if (state == toggle) state = !getter();
+
   if (state == getter()) return true;
 
   setter(state);
@@ -47,12 +55,12 @@ bool BTSetParamState(int state, GetterFunc getter, void (*setter)(int), const ch
 #define BTAvaliable IOBluetoothPreferencesAvailable
 
 #define BTPowerState IOBluetoothPreferenceGetControllerPowerState
-bool BTSetPowerState(int state) {
+bool BTSetPowerState(enum state state) {
   return BTSetParamState(state, BTPowerState, IOBluetoothPreferenceSetControllerPowerState, "power");
 }
 
 #define BTDiscoverableState IOBluetoothPreferenceGetDiscoverableState
-bool BTSetDiscoverableState(int state) {
+bool BTSetDiscoverableState(enum state state) {
   return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable");
 }
 
@@ -133,12 +141,6 @@ char *next_optarg(int argc, char *argv[]) {
 void extend_optarg(int argc, char *argv[]) {
   if (!optarg) optarg = next_optarg(argc, argv);
 }
-
-enum state {
-  toggle = -1,
-  off = 0,
-  on = 1,
-};
 
 bool parse_state_arg(char *arg, enum state *state) {
   if (0 == strcasecmp(arg, "1") || 0 == strcasecmp(arg, "on")) {
