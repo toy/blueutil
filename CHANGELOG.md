@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* Show underlying regex error messages in output, use default out of memory message [@toy](https://github.com/toy)
 * Experimental use different failure exit codes from sysexits [@toy](https://github.com/toy)
 * Add changelog [@toy](https://github.com/toy)
 * Internal change to use blocks instead of going two times through options [@toy](https://github.com/toy)

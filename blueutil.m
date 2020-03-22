@@ -22,6 +22,25 @@
 
 #define eprintf(...) fprintf(stderr, ##__VA_ARGS__)
 
+void *assert_alloc(void *pointer) {
+  if (pointer == NULL) {
+    eprintf("%s\n", strerror(errno));
+    exit(EX_OSERR);
+  }
+  return pointer;
+}
+
+int assert_reg(int errcode, const regex_t *restrict preg, char *reason) {
+  if (errcode == 0 || errcode == REG_NOMATCH) return errcode;
+
+  size_t errbuf_size = regerror(errcode, preg, NULL, 0);
+  char *restrict errbuf = assert_alloc(malloc(errbuf_size));
+  regerror(errcode, preg, errbuf, errbuf_size);
+
+  eprintf("%s: %s\n", reason, errbuf);
+  exit(EX_SOFTWARE);
+}
+
 // private methods
 int IOBluetoothPreferencesAvailable();
 
@@ -177,75 +196,58 @@ bool parse_state_arg(char *arg, enum state *state) {
 
 bool check_device_address_arg(char *arg) {
   regex_t regex;
+  int result;
 
-  if (0 !=
-    regcomp(&regex,
-      "^[0-9a-f]{2}([0-9a-f]{10}|(-[0-9a-f]{2}){5}|(:[0-9a-f]{2}){5})$",
-      REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
-    eprintf("Failed compiling regex");
-    exit(EX_SOFTWARE);
-  }
+  result = regcomp(&regex,
+    "^[0-9a-f]{2}([0-9a-f]{10}|(-[0-9a-f]{2}){5}|(:[0-9a-f]{2}){5})$",
+    REG_EXTENDED | REG_ICASE | REG_NOSUB);
+  assert_reg(result, &regex, "Compiling device address regex");
 
-  int result = regexec(&regex, arg, 0, NULL, 0);
+  result = regexec(&regex, arg, 0, NULL, 0);
+  assert_reg(result, &regex, "Matching device address regex");
 
   regfree(&regex);
 
-  switch (result) {
-    case 0:
-      return true;
-    case REG_NOMATCH:
-      return false;
-    default:
-      eprintf("Failed matching regex");
-      exit(EX_SOFTWARE);
-  }
+  return result == 0;
 }
 
 bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
   regex_t regex;
+  int result;
 
-  if (0 != regcomp(&regex, "^[[:digit:]]+$", REG_EXTENDED | REG_NOSUB)) {
-    eprintf("Failed compiling regex");
-    exit(EX_SOFTWARE);
-  }
+  result = regcomp(&regex, "^[[:digit:]]+$", REG_EXTENDED | REG_NOSUB);
+  assert_reg(result, &regex, "Compiling number regex");
 
-  int result = regexec(&regex, arg, 0, NULL, 0);
+  result = regexec(&regex, arg, 0, NULL, 0);
+  assert_reg(result, &regex, "Matching number regex");
 
   regfree(&regex);
 
-  switch (result) {
-    case 0:
-      *number = strtoul(arg, NULL, 10);
-      return true;
-    case REG_NOMATCH:
-      return false;
-    default:
-      eprintf("Failed matching regex");
-      exit(EX_SOFTWARE);
+  if (result == 0) {
+    *number = strtoul(arg, NULL, 10);
+    return true;
+  } else {
+    return false;
   }
 }
 
 bool parse_signed_long_arg(char *arg, long *number) {
   regex_t regex;
+  int result;
 
-  if (0 != regcomp(&regex, "^-?[[:digit:]]+$", REG_EXTENDED | REG_NOSUB)) {
-    eprintf("Failed compiling regex");
-    exit(EX_SOFTWARE);
-  }
+  result = regcomp(&regex, "^-?[[:digit:]]+$", REG_EXTENDED | REG_NOSUB);
+  assert_reg(result, &regex, "Compiling number regex");
 
-  int result = regexec(&regex, arg, 0, NULL, 0);
+  result = regexec(&regex, arg, 0, NULL, 0);
+  assert_reg(result, &regex, "Matching number regex");
 
   regfree(&regex);
 
-  switch (result) {
-    case 0:
-      *number = strtol(arg, NULL, 10);
-      return true;
-    case REG_NOMATCH:
-      return false;
-    default:
-      eprintf("Failed matching regex");
-      exit(EX_SOFTWARE);
+  if (result == 0) {
+    *number = strtol(arg, NULL, 10);
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -654,14 +656,6 @@ struct cmd_with_args {
 #define CMD_CHUNK 8
 struct cmd_with_args *cmds = NULL;
 size_t cmd_n = 0, cmd_reserved = 0;
-
-void *assert_alloc(void *pointer) {
-  if (pointer == NULL) {
-    eprintf("Not enough memory\n");
-    exit(EX_OSERR);
-  }
-  return pointer;
-}
 
 #define ALLOC_ARGS(type) struct args_##type *args = assert_alloc(malloc(sizeof(struct args_##type)))
 
