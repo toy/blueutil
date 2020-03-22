@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* Experimental use different failure exit codes from sysexits [@toy](https://github.com/toy)
 * Add changelog [@toy](https://github.com/toy)
 * Internal change to use blocks instead of going two times through options [@toy](https://github.com/toy)
 * Mention in usage that requesting 0 recent devices will list all of them [@toy](https://github.com/toy)

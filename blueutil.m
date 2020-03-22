@@ -14,6 +14,11 @@
 
 #include <getopt.h>
 #include <regex.h>
+#include <sysexits.h>
+
+// https://stackoverflow.com/a/12648993/96823
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
 
 #define eprintf(...) fprintf(stderr, ##__VA_ARGS__)
 
@@ -113,6 +118,15 @@ void usage(FILE *io) {
     "  new-default - human readable comma separated key-value pairs (EXPERIMENTAL, THE BEHAVIOUR MAY CHANGE)",
     "  json - compact JSON",
     "  json-pretty - pretty printed JSON",
+    "",
+    "EXPERIMENTAL Exit codes:",
+    "   " STRINGIFY(EXIT_SUCCESS) " Success",
+    "   " STRINGIFY(EXIT_FAILURE) " General failure",
+    "  " STRINGIFY(EX_USAGE) " Wrong usage like missing or unexpected arguments, wrong parameters",
+    "  " STRINGIFY(EX_UNAVAILABLE) " Bluetooth not available",
+    "  " STRINGIFY(EX_SOFTWARE) " Internal error",
+    "  " STRINGIFY(EX_OSERR) " System error like shortage of memory",
+    "  " STRINGIFY(EX_TEMPFAIL) " Timeout error",
   };
 
   for (size_t i = 0, _i = sizeof(lines) / sizeof(lines[0]); i < _i; i++) {
@@ -169,7 +183,7 @@ bool check_device_address_arg(char *arg) {
       "^[0-9a-f]{2}([0-9a-f]{10}|(-[0-9a-f]{2}){5}|(:[0-9a-f]{2}){5})$",
       REG_EXTENDED | REG_ICASE | REG_NOSUB)) {
     eprintf("Failed compiling regex");
-    exit(EXIT_FAILURE);
+    exit(EX_SOFTWARE);
   }
 
   int result = regexec(&regex, arg, 0, NULL, 0);
@@ -183,7 +197,7 @@ bool check_device_address_arg(char *arg) {
       return false;
     default:
       eprintf("Failed matching regex");
-      exit(EXIT_FAILURE);
+      exit(EX_SOFTWARE);
   }
 }
 
@@ -192,7 +206,7 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
 
   if (0 != regcomp(&regex, "^[[:digit:]]+$", REG_EXTENDED | REG_NOSUB)) {
     eprintf("Failed compiling regex");
-    exit(EXIT_FAILURE);
+    exit(EX_SOFTWARE);
   }
 
   int result = regexec(&regex, arg, 0, NULL, 0);
@@ -207,7 +221,7 @@ bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
       return false;
     default:
       eprintf("Failed matching regex");
-      exit(EXIT_FAILURE);
+      exit(EX_SOFTWARE);
   }
 }
 
@@ -216,7 +230,7 @@ bool parse_signed_long_arg(char *arg, long *number) {
 
   if (0 != regcomp(&regex, "^-?[[:digit:]]+$", REG_EXTENDED | REG_NOSUB)) {
     eprintf("Failed compiling regex");
-    exit(EXIT_FAILURE);
+    exit(EX_SOFTWARE);
   }
 
   int result = regexec(&regex, arg, 0, NULL, 0);
@@ -231,7 +245,7 @@ bool parse_signed_long_arg(char *arg, long *number) {
       return false;
     default:
       eprintf("Failed matching regex");
-      exit(EXIT_FAILURE);
+      exit(EX_SOFTWARE);
   }
 }
 
@@ -631,7 +645,7 @@ struct args_wait_rssi {
   unsigned long timeout;
 };
 
-typedef bool (^cmd)(void *args);
+typedef int (^cmd)(void *args);
 struct cmd_with_args {
   cmd cmd;
   void *args;
@@ -644,7 +658,7 @@ size_t cmd_n = 0, cmd_reserved = 0;
 void *assert_alloc(void *pointer) {
   if (pointer == NULL) {
     eprintf("Not enough memory\n");
-    exit(EXIT_FAILURE);
+    exit(EX_OSERR);
   }
   return pointer;
 }
@@ -664,7 +678,7 @@ FormatterFunc list_devices = list_devices_default;
 int main(int argc, char *argv[]) {
   if (!BTAvaliable()) {
     eprintf("Error: Bluetooth not available!\n");
-    return EXIT_FAILURE;
+    return EX_UNAVAILABLE;
   }
 
   if (argc == 1) {
@@ -744,38 +758,38 @@ int main(int argc, char *argv[]) {
 
           if (!parse_state_arg(optarg, &args->state)) {
             eprintf("Unexpected value: %s\n", optarg);
-            return EXIT_FAILURE;
+            return EX_USAGE;
           }
 
-          add_cmd(args, ^bool(void *_args) {
+          add_cmd(args, ^int(void *_args) {
             struct args_state_set *args = (struct args_state_set *)_args;
 
-            return args->func(args->state);
+            return args->func(args->state) ? EXIT_SUCCESS : EX_TEMPFAIL;
           });
         } else {
           ALLOC_ARGS(state_get);
 
           args->func = arg == arg_power ? BTPowerState : BTDiscoverableState;
 
-          add_cmd(args, ^bool(void *_args) {
+          add_cmd(args, ^int(void *_args) {
             struct args_state_get *args = (struct args_state_get *)_args;
 
             printf("%d\n", args->func());
 
-            return true;
+            return EXIT_SUCCESS;
           });
         }
       } break;
       case arg_favourites: {
-        add_cmd(NULL, ^bool(__unused void *_args) {
+        add_cmd(NULL, ^int(__unused void *_args) {
           list_devices([IOBluetoothDevice favoriteDevices], false);
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_paired: {
-        add_cmd(NULL, ^bool(__unused void *_args) {
+        add_cmd(NULL, ^int(__unused void *_args) {
           list_devices([IOBluetoothDevice pairedDevices], false);
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_inquiry: {
@@ -786,11 +800,11 @@ int main(int argc, char *argv[]) {
         if (optarg) {
           if (!parse_unsigned_long_arg(optarg, &args->duration)) {
             eprintf("Expected numeric duration, got: %s\n", optarg);
-            return EXIT_FAILURE;
+            return EX_USAGE;
           }
         }
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_inquiry *args = (struct args_inquiry *)_args;
 
           @autoreleasepool {
@@ -806,7 +820,7 @@ int main(int argc, char *argv[]) {
             list_devices([inquirer foundDevices], false);
           }
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_recent: {
@@ -817,16 +831,16 @@ int main(int argc, char *argv[]) {
         if (optarg) {
           if (!parse_unsigned_long_arg(optarg, &args->max)) {
             eprintf("Expected numeric count, got: %s\n", optarg);
-            return EXIT_FAILURE;
+            return EX_USAGE;
           }
         }
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_recent *args = (struct args_recent *)_args;
 
           list_devices([IOBluetoothDevice recentDevices:args->max], false);
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_info: {
@@ -834,12 +848,12 @@ int main(int argc, char *argv[]) {
 
         args->device_id = optarg;
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
           list_devices(@[get_device(args->device_id)], true);
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_is_connected: {
@@ -847,12 +861,12 @@ int main(int argc, char *argv[]) {
 
         args->device_id = optarg;
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
           printf("%d\n", [get_device(args->device_id) isConnected] ? 1 : 0);
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_connect: {
@@ -860,15 +874,15 @@ int main(int argc, char *argv[]) {
 
         args->device_id = optarg;
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
           if ([get_device(args->device_id) openConnection] != kIOReturnSuccess) {
             eprintf("Failed to connect \"%s\"\n", args->device_id);
-            return false;
+            return EXIT_FAILURE;
           }
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_disconnect: {
@@ -876,15 +890,15 @@ int main(int argc, char *argv[]) {
 
         args->device_id = optarg;
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
           if ([get_device(args->device_id) closeConnection] != kIOReturnSuccess) {
             eprintf("Failed to disconnect \"%s\"\n", args->device_id);
-            return false;
+            return EXIT_FAILURE;
           }
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_add_favourite: {
@@ -892,15 +906,15 @@ int main(int argc, char *argv[]) {
 
         args->device_id = optarg;
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
           if ([get_device(args->device_id) addToFavorites] != kIOReturnSuccess) {
             eprintf("Failed to add \"%s\" to favourites\n", args->device_id);
-            return false;
+            return EXIT_FAILURE;
           }
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_remove_favourite: {
@@ -908,15 +922,15 @@ int main(int argc, char *argv[]) {
 
         args->device_id = optarg;
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
           if ([get_device(args->device_id) removeFromFavorites] != kIOReturnSuccess) {
             eprintf("Failed to remove \"%s\" from favourites\n", args->device_id);
-            return false;
+            return EXIT_FAILURE;
           }
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_pair: {
@@ -929,10 +943,10 @@ int main(int argc, char *argv[]) {
           eprintf("Pairing pin can't be longer than 16 characters, got %lu (%s)\n",
             strlen(args->pin_code),
             args->pin_code);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         }
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_pair *args = (struct args_pair *)_args;
 
           @autoreleasepool {
@@ -945,7 +959,7 @@ int main(int argc, char *argv[]) {
 
             if ([pairer start] != kIOReturnSuccess) {
               eprintf("Failed to start pairing with \"%s\"\n", args->device_id);
-              return false;
+              return EXIT_FAILURE;
             }
             CFRunLoopRun();
             [pairer stop];
@@ -955,17 +969,17 @@ int main(int argc, char *argv[]) {
                 args->device_id,
                 [delegate errorCode],
                 [delegate errorDescription]);
-              return false;
+              return EXIT_FAILURE;
             }
           }
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_format: {
         if (!parse_output_formatter(optarg, &list_devices)) {
           eprintf("Unexpected format: %s\n", optarg);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         }
       } break;
       case arg_wait_connect:
@@ -979,10 +993,10 @@ int main(int argc, char *argv[]) {
         args->timeout = 0;
         if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, &args->timeout)) {
           eprintf("Expected numeric timeout, got: %s\n", timeout_arg);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         }
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_wait_connection_change *args = (struct args_wait_connection_change *)_args;
 
           @autoreleasepool {
@@ -1013,7 +1027,7 @@ int main(int argc, char *argv[]) {
             if (args->timeout > 0) {
               if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, args->timeout, false)) {
                 eprintf("Timed out waiting for \"%s\" to %s\n", optarg, args->wait_connect ? "connect" : "disconnect");
-                return false;
+                return EX_TEMPFAIL;
               }
             } else {
               CFRunLoopRun();
@@ -1023,7 +1037,7 @@ int main(int argc, char *argv[]) {
             CFRelease(timer);
           }
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_wait_rssi: {
@@ -1035,20 +1049,20 @@ int main(int argc, char *argv[]) {
         if (!op_arg) {
           eprintf("%s: option `%s' requires 2nd argument\n", argv[0], argv[optind - 2]);
           usage(stderr);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         } else if (!parse_op_arg(op_arg, &args->op, &args->op_name)) {
           eprintf("Expected operator, got: %s\n", op_arg);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         }
 
         char *value_arg = next_reqarg(argc, argv);
         if (!value_arg) {
           eprintf("%s: option `%s' requires 3rd argument\n", argv[0], argv[optind - 3]);
           usage(stderr);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         } else if (!parse_signed_long_arg(value_arg, &args->value)) {
           eprintf("Expected numeric value, got: %s\n", value_arg);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         }
 
         char *period_arg = next_optarg(argc, argv);
@@ -1056,10 +1070,10 @@ int main(int argc, char *argv[]) {
         if (period_arg) {
           if (!parse_unsigned_long_arg(period_arg, &args->period)) {
             eprintf("Expected numeric period, got: %s\n", period_arg);
-            return EXIT_FAILURE;
+            return EX_USAGE;
           } else if (args->period < 1) {
             eprintf("Expected period to be at least 1, got: %ld\n", args->period);
-            return EXIT_FAILURE;
+            return EX_USAGE;
           }
         }
 
@@ -1067,10 +1081,10 @@ int main(int argc, char *argv[]) {
         args->timeout = 0;
         if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, &args->timeout)) {
           eprintf("Expected numeric timeout, got: %s\n", timeout_arg);
-          return EXIT_FAILURE;
+          return EX_USAGE;
         }
 
-        add_cmd(args, ^bool(void *_args) {
+        add_cmd(args, ^int(void *_args) {
           struct args_wait_rssi *args = (struct args_wait_rssi *)_args;
 
           IOBluetoothDevice *device = get_device(args->device_id);
@@ -1095,7 +1109,7 @@ int main(int argc, char *argv[]) {
                 args->device_id,
                 args->op_name,
                 args->value);
-              return false;
+              return EX_TEMPFAIL;
             }
           } else {
             CFRunLoopRun();
@@ -1104,7 +1118,7 @@ int main(int argc, char *argv[]) {
           CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
           CFRelease(timer);
 
-          return true;
+          return EXIT_SUCCESS;
         });
       } break;
       case arg_version: {
@@ -1117,7 +1131,7 @@ int main(int argc, char *argv[]) {
       }
       default: {
         usage(stderr);
-        return EXIT_FAILURE;
+        return EX_USAGE;
       }
     }
   }
@@ -1128,13 +1142,12 @@ int main(int argc, char *argv[]) {
       eprintf(", %s", argv[optind++]);
     }
     eprintf("\n");
-    return EXIT_FAILURE;
+    return EX_USAGE;
   }
 
   for (size_t i = 0; i < cmd_n; i++) {
-    if (!cmds[i].cmd(cmds[i].args)) {
-      return EXIT_FAILURE;
-    }
+    int status = cmds[i].cmd(cmds[i].args);
+    if (status != EXIT_SUCCESS) return status;
     free(cmds[i].args);
   }
   free(cmds);

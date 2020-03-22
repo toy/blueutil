@@ -51,6 +51,15 @@ FORMAT can be one of:
   new-default - human readable comma separated key-value pairs (EXPERIMENTAL, THE BEHAVIOUR MAY CHANGE)
   json - compact JSON
   json-pretty - pretty printed JSON
+
+EXPERIMENTAL Exit codes:
+   0 Success
+   1 General failure
+  64 Wrong usage like missing or unexpected arguments, wrong parameters
+  69 Bluetooth not available
+  70 Internal error
+  71 System error like shortage of memory
+  75 Timeout error
 ```
 <!--]USAGE-->
 
