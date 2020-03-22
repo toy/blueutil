@@ -590,6 +590,77 @@ bool parse_op_arg(const char *arg, OpFunc *op, const char **op_name) {
 }
 @end
 
+struct args_state_get {
+  GetterFunc func;
+};
+
+struct args_state_set {
+  SetterFunc func;
+  enum state state;
+};
+
+struct args_inquiry {
+  unsigned long duration;
+};
+
+struct args_recent {
+  unsigned long max;
+};
+
+struct args_device_id {
+  char *device_id;
+};
+
+struct args_pair {
+  char *device_id;
+  char *pin_code;
+};
+
+struct args_wait_connection_change {
+  char *device_id;
+  bool wait_connect;
+  unsigned long timeout;
+};
+
+struct args_wait_rssi {
+  char *device_id;
+  OpFunc op;
+  const char *op_name;
+  long value;
+  unsigned long period;
+  unsigned long timeout;
+};
+
+typedef bool (^cmd)(void *args);
+struct cmd_with_args {
+  cmd cmd;
+  void *args;
+};
+
+#define CMD_CHUNK 8
+struct cmd_with_args *cmds = NULL;
+size_t cmd_n = 0, cmd_reserved = 0;
+
+void *assert_alloc(void *pointer) {
+  if (pointer == NULL) {
+    eprintf("Not enough memory\n");
+    exit(EXIT_FAILURE);
+  }
+  return pointer;
+}
+
+#define ALLOC_ARGS(type) struct args_##type *args = assert_alloc(malloc(sizeof(struct args_##type)))
+
+void add_cmd(void *args, cmd cmd) {
+  if (cmd_n >= cmd_reserved) {
+    cmd_reserved += CMD_CHUNK;
+    cmds = assert_alloc(reallocf(cmds, sizeof(struct cmd_with_args) * cmd_reserved));
+  }
+  cmds[cmd_n++] = (struct cmd_with_args){.cmd = cmd, .args = args};
+}
+
+FormatterFunc list_devices = list_devices_default;
+
 int main(int argc, char *argv[]) {
   if (!BTAvaliable()) {
     eprintf("Error: Bluetooth not available!\n");
@@ -659,8 +730,6 @@ int main(int argc, char *argv[]) {
   };
   // clang-format on
 
-  FormatterFunc list_devices = list_devices_default;
-
   int arg;
   while ((arg = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
     switch (arg) {
@@ -668,39 +737,230 @@ int main(int argc, char *argv[]) {
       case arg_discoverable: {
         extend_optarg(argc, argv);
 
-        if (optarg && !parse_state_arg(optarg, NULL)) {
-          eprintf("Unexpected value: %s\n", optarg);
-          return EXIT_FAILURE;
+        if (optarg) {
+          ALLOC_ARGS(state_set);
+
+          args->func = arg == arg_power ? BTSetPowerState : BTSetDiscoverableState;
+
+          if (!parse_state_arg(optarg, &args->state)) {
+            eprintf("Unexpected value: %s\n", optarg);
+            return EXIT_FAILURE;
+          }
+
+          add_cmd(args, ^bool(void *_args) {
+            struct args_state_set *args = (struct args_state_set *)_args;
+
+            return args->func(args->state);
+          });
+        } else {
+          ALLOC_ARGS(state_get);
+
+          args->func = arg == arg_power ? BTPowerState : BTDiscoverableState;
+
+          add_cmd(args, ^bool(void *_args) {
+            struct args_state_get *args = (struct args_state_get *)_args;
+
+            printf("%d\n", args->func());
+
+            return true;
+          });
         }
       } break;
-      case arg_favourites:
-      case arg_paired:
-        break;
-      case arg_inquiry:
-      case arg_recent: {
+      case arg_favourites: {
+        add_cmd(NULL, ^bool(__unused void *_args) {
+          list_devices([IOBluetoothDevice favoriteDevices], false);
+          return true;
+        });
+      } break;
+      case arg_paired: {
+        add_cmd(NULL, ^bool(__unused void *_args) {
+          list_devices([IOBluetoothDevice pairedDevices], false);
+          return true;
+        });
+      } break;
+      case arg_inquiry: {
+        ALLOC_ARGS(inquiry);
+
         extend_optarg(argc, argv);
-
-        if (optarg && !parse_unsigned_long_arg(optarg, NULL)) {
-          eprintf("Expected number, got: %s\n", optarg);
-          return EXIT_FAILURE;
+        args->duration = 10;
+        if (optarg) {
+          if (!parse_unsigned_long_arg(optarg, &args->duration)) {
+            eprintf("Expected numeric duration, got: %s\n", optarg);
+            return EXIT_FAILURE;
+          }
         }
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_inquiry *args = (struct args_inquiry *)_args;
+
+          @autoreleasepool {
+            DeviceInquiryRunLoopStopper *stopper = [[[DeviceInquiryRunLoopStopper alloc] init] autorelease];
+            IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:stopper];
+
+            [inquirer setInquiryLength:args->duration];
+
+            [inquirer start];
+            CFRunLoopRun();
+            [inquirer stop];
+
+            list_devices([inquirer foundDevices], false);
+          }
+
+          return true;
+        });
       } break;
-      case arg_info:
-      case arg_is_connected:
-      case arg_connect:
-      case arg_disconnect:
-      case arg_add_favourite:
-      case arg_remove_favourite:
-        break;
-      case arg_pair: {
-        char *requested_pin = next_optarg(argc, argv);
+      case arg_recent: {
+        ALLOC_ARGS(recent);
 
-        if (requested_pin && strlen(requested_pin) > 16) {
+        extend_optarg(argc, argv);
+        args->max = 10;
+        if (optarg) {
+          if (!parse_unsigned_long_arg(optarg, &args->max)) {
+            eprintf("Expected numeric count, got: %s\n", optarg);
+            return EXIT_FAILURE;
+          }
+        }
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_recent *args = (struct args_recent *)_args;
+
+          list_devices([IOBluetoothDevice recentDevices:args->max], false);
+
+          return true;
+        });
+      } break;
+      case arg_info: {
+        ALLOC_ARGS(device_id);
+
+        args->device_id = optarg;
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_device_id *args = (struct args_device_id *)_args;
+
+          list_devices(@[get_device(args->device_id)], true);
+
+          return true;
+        });
+      } break;
+      case arg_is_connected: {
+        ALLOC_ARGS(device_id);
+
+        args->device_id = optarg;
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_device_id *args = (struct args_device_id *)_args;
+
+          printf("%d\n", [get_device(args->device_id) isConnected] ? 1 : 0);
+
+          return true;
+        });
+      } break;
+      case arg_connect: {
+        ALLOC_ARGS(device_id);
+
+        args->device_id = optarg;
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_device_id *args = (struct args_device_id *)_args;
+
+          if ([get_device(args->device_id) openConnection] != kIOReturnSuccess) {
+            eprintf("Failed to connect \"%s\"\n", args->device_id);
+            return false;
+          }
+
+          return true;
+        });
+      } break;
+      case arg_disconnect: {
+        ALLOC_ARGS(device_id);
+
+        args->device_id = optarg;
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_device_id *args = (struct args_device_id *)_args;
+
+          if ([get_device(args->device_id) closeConnection] != kIOReturnSuccess) {
+            eprintf("Failed to disconnect \"%s\"\n", args->device_id);
+            return false;
+          }
+
+          return true;
+        });
+      } break;
+      case arg_add_favourite: {
+        ALLOC_ARGS(device_id);
+
+        args->device_id = optarg;
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_device_id *args = (struct args_device_id *)_args;
+
+          if ([get_device(args->device_id) addToFavorites] != kIOReturnSuccess) {
+            eprintf("Failed to add \"%s\" to favourites\n", args->device_id);
+            return false;
+          }
+
+          return true;
+        });
+      } break;
+      case arg_remove_favourite: {
+        ALLOC_ARGS(device_id);
+
+        args->device_id = optarg;
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_device_id *args = (struct args_device_id *)_args;
+
+          if ([get_device(args->device_id) removeFromFavorites] != kIOReturnSuccess) {
+            eprintf("Failed to remove \"%s\" from favourites\n", args->device_id);
+            return false;
+          }
+
+          return true;
+        });
+      } break;
+      case arg_pair: {
+        ALLOC_ARGS(pair);
+
+        args->device_id = optarg;
+        args->pin_code = next_optarg(argc, argv);
+
+        if (args->pin_code && strlen(args->pin_code) > 16) {
           eprintf("Pairing pin can't be longer than 16 characters, got %lu (%s)\n",
-            strlen(requested_pin),
-            requested_pin);
+            strlen(args->pin_code),
+            args->pin_code);
           return EXIT_FAILURE;
         }
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_pair *args = (struct args_pair *)_args;
+
+          @autoreleasepool {
+            IOBluetoothDevice *device = get_device(args->device_id);
+            DevicePairDelegate *delegate = [[[DevicePairDelegate alloc] init] autorelease];
+            IOBluetoothDevicePair *pairer = [IOBluetoothDevicePair pairWithDevice:device];
+            pairer.delegate = delegate;
+
+            delegate.requestedPin = args->pin_code;
+
+            if ([pairer start] != kIOReturnSuccess) {
+              eprintf("Failed to start pairing with \"%s\"\n", args->device_id);
+              return false;
+            }
+            CFRunLoopRun();
+            [pairer stop];
+
+            if (![device isPaired]) {
+              eprintf("Failed to pair \"%s\" with error 0x%02x (%s)\n",
+                args->device_id,
+                [delegate errorCode],
+                [delegate errorDescription]);
+              return false;
+            }
+          }
+
+          return true;
+        });
       } break;
       case arg_format: {
         if (!parse_output_formatter(optarg, &list_devices)) {
@@ -710,55 +970,142 @@ int main(int argc, char *argv[]) {
       } break;
       case arg_wait_connect:
       case arg_wait_disconnect: {
-        char *timeout_arg = next_optarg(argc, argv);
+        ALLOC_ARGS(wait_connection_change);
 
-        if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, NULL)) {
+        args->wait_connect = arg == arg_wait_connect;
+        args->device_id = optarg;
+
+        char *timeout_arg = next_optarg(argc, argv);
+        args->timeout = 0;
+        if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, &args->timeout)) {
           eprintf("Expected numeric timeout, got: %s\n", timeout_arg);
           return EXIT_FAILURE;
         }
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_wait_connection_change *args = (struct args_wait_connection_change *)_args;
+
+          @autoreleasepool {
+            IOBluetoothDevice *device = get_device(args->device_id);
+
+            DeviceNotificationRunLoopStopper *stopper =
+              [[[DeviceNotificationRunLoopStopper alloc] initWithExpectedDevice:device] autorelease];
+
+            CFRunLoopTimerRef timer =
+              CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, 0, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
+                if (args->wait_connect) {
+                  if ([device isConnected]) {
+                    CFRunLoopStop(CFRunLoopGetCurrent());
+                  } else {
+                    [IOBluetoothDevice registerForConnectNotifications:stopper
+                                                              selector:@selector(notification:fromDevice:)];
+                  }
+                } else {
+                  if ([device isConnected]) {
+                    [device registerForDisconnectNotification:stopper selector:@selector(notification:fromDevice:)];
+                  } else {
+                    CFRunLoopStop(CFRunLoopGetCurrent());
+                  }
+                }
+              });
+            CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+
+            if (args->timeout > 0) {
+              if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, args->timeout, false)) {
+                eprintf("Timed out waiting for \"%s\" to %s\n", optarg, args->wait_connect ? "connect" : "disconnect");
+                return false;
+              }
+            } else {
+              CFRunLoopRun();
+            }
+
+            CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+            CFRelease(timer);
+          }
+
+          return true;
+        });
       } break;
       case arg_wait_rssi: {
-        char *op_arg = next_reqarg(argc, argv);
+        ALLOC_ARGS(wait_rssi);
 
+        args->device_id = optarg;
+
+        char *op_arg = next_reqarg(argc, argv);
         if (!op_arg) {
           eprintf("%s: option `%s' requires 2nd argument\n", argv[0], argv[optind - 2]);
           usage(stderr);
           return EXIT_FAILURE;
-        } else if (!parse_op_arg(op_arg, NULL, NULL)) {
+        } else if (!parse_op_arg(op_arg, &args->op, &args->op_name)) {
           eprintf("Expected operator, got: %s\n", op_arg);
           return EXIT_FAILURE;
         }
 
         char *value_arg = next_reqarg(argc, argv);
-
         if (!value_arg) {
           eprintf("%s: option `%s' requires 3rd argument\n", argv[0], argv[optind - 3]);
           usage(stderr);
           return EXIT_FAILURE;
-        } else if (!parse_signed_long_arg(value_arg, NULL)) {
+        } else if (!parse_signed_long_arg(value_arg, &args->value)) {
           eprintf("Expected numeric value, got: %s\n", value_arg);
           return EXIT_FAILURE;
         }
 
         char *period_arg = next_optarg(argc, argv);
-
+        args->period = 1;
         if (period_arg) {
-          unsigned long period;
-          if (!parse_unsigned_long_arg(period_arg, &period)) {
+          if (!parse_unsigned_long_arg(period_arg, &args->period)) {
             eprintf("Expected numeric period, got: %s\n", period_arg);
             return EXIT_FAILURE;
-          } else if (period < 1) {
-            eprintf("Expected period to be at least 1, got: %ld\n", period);
+          } else if (args->period < 1) {
+            eprintf("Expected period to be at least 1, got: %ld\n", args->period);
             return EXIT_FAILURE;
           }
         }
 
         char *timeout_arg = next_optarg(argc, argv);
-
-        if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, NULL)) {
+        args->timeout = 0;
+        if (timeout_arg && !parse_unsigned_long_arg(timeout_arg, &args->timeout)) {
           eprintf("Expected numeric timeout, got: %s\n", timeout_arg);
           return EXIT_FAILURE;
         }
+
+        add_cmd(args, ^bool(void *_args) {
+          struct args_wait_rssi *args = (struct args_wait_rssi *)_args;
+
+          IOBluetoothDevice *device = get_device(args->device_id);
+
+          CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault,
+            0,
+            args->period,
+            0,
+            0,
+            ^(__unused CFRunLoopTimerRef timer) {
+              long rssi = [device RSSI];
+              if (rssi == 127) rssi = -129;
+              if (args->op(rssi, args->value)) {
+                CFRunLoopStop(CFRunLoopGetCurrent());
+              }
+            });
+          CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+
+          if (args->timeout > 0) {
+            if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, args->timeout, false)) {
+              eprintf("Timed out waiting for rssi of \"%s\" to be %s %ld\n",
+                args->device_id,
+                args->op_name,
+                args->value);
+              return false;
+            }
+          } else {
+            CFRunLoopRun();
+          }
+
+          CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
+          CFRelease(timer);
+
+          return true;
+        });
       } break;
       case arg_version: {
         printf(VERSION "\n");
@@ -784,206 +1131,13 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  optind = 1;
-  while ((arg = getopt_long(argc, argv, optstring, long_options, NULL)) != -1) {
-    switch (arg) {
-      case arg_power:
-      case arg_discoverable: {
-        extend_optarg(argc, argv);
-        if (optarg) {
-          SetterFunc setter = arg == 'p' ? BTSetPowerState : BTSetDiscoverableState;
-
-          enum state state;
-          parse_state_arg(optarg, &state);
-          if (state == toggle) {
-            GetterFunc getter = arg == 'p' ? BTPowerState : BTDiscoverableState;
-
-            state = !getter();
-          }
-
-          if (!setter(state)) {
-            return EXIT_FAILURE;
-          }
-        } else {
-          GetterFunc getter = arg == 'p' ? BTPowerState : BTDiscoverableState;
-
-          printf("%d\n", getter());
-        }
-      } break;
-      case arg_favourites: {
-        list_devices([IOBluetoothDevice favoriteDevices], false);
-      } break;
-      case arg_paired: {
-        list_devices([IOBluetoothDevice pairedDevices], false);
-      } break;
-      case arg_inquiry: @autoreleasepool {
-        DeviceInquiryRunLoopStopper *stopper = [[[DeviceInquiryRunLoopStopper alloc] init] autorelease];
-        IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:stopper];
-
-        extend_optarg(argc, argv);
-        if (optarg) {
-          unsigned long t;
-          parse_unsigned_long_arg(optarg, &t);
-          [inquirer setInquiryLength:t];
-        }
-
-        [inquirer start];
-        CFRunLoopRun();
-        [inquirer stop];
-
-        list_devices([inquirer foundDevices], false);
-      } break;
-      case arg_recent: {
-        unsigned long n = 10;
-
-        extend_optarg(argc, argv);
-        if (optarg) parse_unsigned_long_arg(optarg, &n);
-
-        list_devices([IOBluetoothDevice recentDevices:n], false);
-      } break;
-      case arg_info: {
-        list_devices(@[get_device(optarg)], true);
-      } break;
-      case arg_is_connected: {
-        printf("%d\n", [get_device(optarg) isConnected] ? 1 : 0);
-      } break;
-      case arg_connect: {
-        if ([get_device(optarg) openConnection] != kIOReturnSuccess) {
-          eprintf("Failed to connect \"%s\"\n", optarg);
-          return EXIT_FAILURE;
-        }
-      } break;
-      case arg_disconnect: {
-        if ([get_device(optarg) closeConnection] != kIOReturnSuccess) {
-          eprintf("Failed to disconnect \"%s\"\n", optarg);
-          return EXIT_FAILURE;
-        }
-      } break;
-      case arg_pair: @autoreleasepool {
-        IOBluetoothDevice *device = get_device(optarg);
-        DevicePairDelegate *delegate = [[[DevicePairDelegate alloc] init] autorelease];
-        IOBluetoothDevicePair *pairer = [IOBluetoothDevicePair pairWithDevice:device];
-        pairer.delegate = delegate;
-
-        delegate.requestedPin = next_optarg(argc, argv);
-
-        if ([pairer start] != kIOReturnSuccess) {
-          eprintf("Failed to start pairing with \"%s\"\n", optarg);
-          return EXIT_FAILURE;
-        }
-        CFRunLoopRun();
-        [pairer stop];
-
-        if (![device isPaired]) {
-          eprintf("Failed to pair \"%s\" with error 0x%02x (%s)\n",
-            optarg,
-            [delegate errorCode],
-            [delegate errorDescription]);
-          return EXIT_FAILURE;
-        }
-      } break;
-      case arg_add_favourite: {
-        if ([get_device(optarg) addToFavorites] != kIOReturnSuccess) {
-          eprintf("Failed to add \"%s\" to favourites\n", optarg);
-          return EXIT_FAILURE;
-        }
-      } break;
-      case arg_remove_favourite: {
-        if ([get_device(optarg) removeFromFavorites] != kIOReturnSuccess) {
-          eprintf("Failed to remove \"%s\" from favourites\n", optarg);
-          return EXIT_FAILURE;
-        }
-      } break;
-      case arg_wait_connect:
-      case arg_wait_disconnect: {
-        IOBluetoothDevice *device = get_device(optarg);
-
-        unsigned long timeout = 0;
-        char *timeout_arg = next_optarg(argc, argv);
-        if (timeout_arg) parse_unsigned_long_arg(timeout_arg, &timeout);
-
-        @autoreleasepool {
-          DeviceNotificationRunLoopStopper *stopper =
-            [[[DeviceNotificationRunLoopStopper alloc] initWithExpectedDevice:device] autorelease];
-
-          CFRunLoopTimerRef timer =
-            CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, 0, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
-              if (arg == arg_wait_connect) {
-                if ([device isConnected]) {
-                  CFRunLoopStop(CFRunLoopGetCurrent());
-                } else {
-                  [IOBluetoothDevice registerForConnectNotifications:stopper
-                                                            selector:@selector(notification:fromDevice:)];
-                }
-              } else {
-                if ([device isConnected]) {
-                  [device registerForDisconnectNotification:stopper selector:@selector(notification:fromDevice:)];
-                } else {
-                  CFRunLoopStop(CFRunLoopGetCurrent());
-                }
-              }
-            });
-          CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
-
-          if (timeout > 0) {
-            if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, timeout, false)) {
-              eprintf("Timed out waiting for \"%s\" to %s\n",
-                optarg,
-                arg == arg_wait_connect ? "connect" : "disconnect");
-              return EXIT_FAILURE;
-            }
-          } else {
-            CFRunLoopRun();
-          }
-
-          CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
-          CFRelease(timer);
-        }
-      } break;
-      case arg_wait_rssi: {
-        IOBluetoothDevice *device = get_device(optarg);
-
-        __block OpFunc op;
-        __block const char *op_name = NULL;
-        char *op_arg = next_reqarg(argc, argv);
-        parse_op_arg(op_arg, &op, &op_name);
-
-        __block long value;
-        char *value_arg = next_reqarg(argc, argv);
-        parse_signed_long_arg(value_arg, &value);
-
-        unsigned long period = 1;
-        char *period_arg = next_optarg(argc, argv);
-        if (period_arg) parse_unsigned_long_arg(period_arg, &period);
-
-        unsigned long timeout = 0;
-        char *timeout_arg = next_optarg(argc, argv);
-        if (timeout_arg) parse_unsigned_long_arg(timeout_arg, &timeout);
-
-        CFRunLoopTimerRef timer =
-          CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, 0, period, 0, 0, ^(__unused CFRunLoopTimerRef timer) {
-            long rssi = [device RSSI];
-            if (rssi == 127) rssi = -129;
-            if (op(rssi, value)) {
-              CFRunLoopStop(CFRunLoopGetCurrent());
-            }
-          });
-        CFRunLoopAddTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
-
-        if (timeout > 0) {
-          if (kCFRunLoopRunTimedOut == CFRunLoopRunInMode(kCFRunLoopDefaultMode, timeout, false)) {
-            eprintf("Timed out waiting for rssi of \"%s\" to be %s %ld\n", optarg, op_name, value);
-            return EXIT_FAILURE;
-          }
-        } else {
-          CFRunLoopRun();
-        }
-
-        CFRunLoopRemoveTimer(CFRunLoopGetCurrent(), timer, kCFRunLoopDefaultMode);
-        CFRelease(timer);
-      } break;
+  for (size_t i = 0; i < cmd_n; i++) {
+    if (!cmds[i].cmd(cmds[i].args)) {
+      return EXIT_FAILURE;
     }
+    free(cmds[i].args);
   }
+  free(cmds);
 
   return EXIT_SUCCESS;
 }
