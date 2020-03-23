@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+
+require 'pathname'
+require 'date'
+
+abort "Expected new version as the only argument" unless ARGV.length == 1
+
+new_version = ARGV.first
+
+def clean_workind_directory?
+  `git status --porcelain`.empty?
+end
+
+clean_workind_directory? or abort('Working directory not clean')
+
+system './update_usage'
+
+clean_workind_directory? or abort('Usage in README is not up to date')
+
+paths = Pathname.glob('*').select do |path|
+  next unless path.file?
+  next if path.executable?
+
+  original = path.read
+  changed = original.gsub(/(?<before>Copyright \(c\) )(?<year>\d+)(?:-\d+)?(?<after> \w+ \w+)/) do
+    m = Regexp.last_match
+    "#{m[:before]}#{[m[:year].to_i, Time.now.year].uniq.join('-')}#{m[:after]}"
+  end
+
+  case path.to_s
+  when 'blueutil.m'
+    changed = changed.sub(/(?<=#define VERSION ")\d+(?:\.\d+)+(?=")/, new_version)
+  when 'CHANGELOG.md'
+    lines = changed.lines
+    {
+      2 => "## unreleased\n",
+      3 => "\n",
+    }.each do |n, expected|
+      abort "Expected #{expected} on line #{n}, got #{lines[n]}" unless lines[n] == expected
+    end
+    lines.insert(3, "\n", "## v#{new_version} (#{Date.today.strftime('%Y-%m-%d')})\n")
+    changed = lines.join
+  end
+
+  next if original == changed
+
+  path.open('w'){ |f| f.write(changed) }
+end
+
+Pathname('blueutil').unlink
+system(*%w[make blueutil]) or abort('failed to build')
+`./blueutil -h`[new_version] or abort('did not find new version in help output')
+system *%w[git add] + paths.map(&:to_s)
+system *%w[git diff --cached]
+
+puts %q{Type "yes" to continue}
+abort unless $stdin.gets.strip == 'yes'
+
+system *%W[git commit -m v#{new_version}]
+system *%W[git tag v#{new_version}]
+system *%w[git push]
+system *%w[git push --tags]
