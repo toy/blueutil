@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+
+require 'pathname'
+
+USAGE_REGEXP = /
+  (?<open>#{Regexp.escape '<!--USAGE[-->'})
+  .*
+  (?<close>#{Regexp.escape '<!--]USAGE-->'})
+/mx
+
+path = Pathname('README.md')
+
+original = path.read
+changed = original.sub(USAGE_REGEXP) do
+  m = Regexp.last_match
+  system 'make -s blueutil'
+  usage = `./blueutil --help`.sub(/\Ablueutil v.*/, '').lstrip
+  "#{m[:open]}\n```\n#{usage}```\n#{m[:close]}"
+end
+
+path.open('w'){ |f| f.write(changed) } unless original == changed

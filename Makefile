@@ -6,10 +6,14 @@ bindir = $(prefix)/bin
 INSTALL = install
 INSTALL_PROGRAM = $(INSTALL) -m 755
 
-build: blueutil
+build: blueutil update_usage
 
 format:
 	clang-format -i *.m
+
+update_usage: blueutil
+	./update_usage
+	touch update_usage
 
 test: build
 	./test
