@@ -8,6 +8,9 @@ INSTALL_PROGRAM = $(INSTALL) -m 755
 
 build: blueutil
 
+format:
+	clang-format -i *.m
+
 test: build
 	./test
 
@@ -20,4 +23,4 @@ install: build
 uninstall:
 	$(RM) $(DESTDIR)$(bindir)/blueutil
 
-.PHONY: build test clean install uninstall
+.PHONY: build format test clean install uninstall
