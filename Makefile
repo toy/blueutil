@@ -6,7 +6,9 @@ bindir = $(prefix)/bin
 INSTALL = install
 INSTALL_PROGRAM = $(INSTALL) -m 755
 
-build: blueutil update_usage
+all: build
+
+build: blueutil
 
 format:
 	clang-format -i *.m
@@ -27,4 +29,4 @@ install: build
 uninstall:
 	$(RM) $(DESTDIR)$(bindir)/blueutil
 
-.PHONY: build format test clean install uninstall
+.PHONY: all build format test clean install uninstall
