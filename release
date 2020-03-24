@@ -3,9 +3,21 @@
 require 'pathname'
 require 'date'
 
-abort "Expected new version as the only argument" unless ARGV.length == 1
+MAIN_FILE = 'blueutil.m'
+DEFINE_VERSION_REGEXP = /(?<=#define VERSION ")\d+(?:\.\d+)+(?=")/
 
-new_version = ARGV.first
+version_parts = File.read(MAIN_FILE)[DEFINE_VERSION_REGEXP].split('.').map(&:to_i)
+
+new_version = case ARGV
+when %w[major]
+  "#{version_parts[0] + 1}.0.0"
+when %w[minor]
+  "#{version_parts[0]}.#{version_parts[1] + 1}.0"
+when %w[patch]
+  "#{version_parts[0]}.#{version_parts[1]}.#{version_parts[2] + 1}"
+else
+  abort 'Expected major, minor or patch as the only argument'
+end
 
 def clean_workind_directory?
   `git status --porcelain`.empty?
@@ -28,8 +40,8 @@ paths = Pathname.glob('*').select do |path|
   end
 
   case path.to_s
-  when 'blueutil.m'
-    changed = changed.sub(/(?<=#define VERSION ")\d+(?:\.\d+)+(?=")/, new_version)
+  when MAIN_FILE
+    changed = changed.sub(DEFINE_VERSION_REGEXP, new_version)
   when 'CHANGELOG.md'
     lines = changed.lines
     {

@@ -147,7 +147,7 @@ make test
 To release new version:
 
 ```sh
-./release X.X.X # where X.X.X is version
+./release major|minor|patch
 ```
 
 ## Copyright
