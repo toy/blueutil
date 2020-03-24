@@ -124,6 +124,32 @@ Uses private API from IOBluetooth framework (i.e. `IOBluetoothPreference*()`).
 
 Opening Bluetooth preference pane always turns on discoverability if bluetooth power is on or if it is switched on when preference pane is open, this change of state is not reported by the function used by `blueutil`.
 
+### Development
+
+To build and update usage:
+
+```sh
+make build update_usage
+```
+
+To apply clang-format:
+
+```sh
+make format
+```
+
+To test:
+
+```sh
+make test
+```
+
+To release new version:
+
+```sh
+./release X.X.X # where X.X.X is version
+```
+
 ## Copyright
 
 Originally written by Frederik Seiffert ego@frederikseiffert.de http://www.frederikseiffert.de/blueutil/
