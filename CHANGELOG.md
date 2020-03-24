@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## v2.6.0 (2020-03-25)
+
 * Show underlying regex error messages in output, use default out of memory message [@toy](https://github.com/toy)
 * Experimental use different failure exit codes from sysexits [@toy](https://github.com/toy)
 * Add changelog [@toy](https://github.com/toy)
