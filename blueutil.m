@@ -176,12 +176,12 @@ void extend_optarg(int argc, char *argv[]) {
 }
 
 bool parse_state_arg(char *arg, enum state *state) {
-  if (0 == strcasecmp(arg, "1") || 0 == strcasecmp(arg, "on")) {
+  if (0 == strcmp(arg, "1") || 0 == strcasecmp(arg, "on")) {
     *state = on;
     return true;
   }
 
-  if (0 == strcasecmp(arg, "0") || 0 == strcasecmp(arg, "off")) {
+  if (0 == strcmp(arg, "0") || 0 == strcasecmp(arg, "off")) {
     *state = off;
     return true;
   }
