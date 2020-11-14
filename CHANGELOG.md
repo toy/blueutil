@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* Refuse to run as root user to prevent possible issues like discoverability getting stuck in some state [#41](https://github.com/toy/blueutil/issues/41) [@toy](https://github.com/toy)
+
 ## v2.6.0 (2020-03-25)
 
 * Show underlying regex error messages in output, use default out of memory message [@toy](https://github.com/toy)

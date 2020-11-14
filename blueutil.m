@@ -138,6 +138,9 @@ void usage(FILE *io) {
     "  json - compact JSON",
     "  json-pretty - pretty printed JSON",
     "",
+    "Due to possible problems, blueutil will refuse to run as root user (see https://github.com/toy/blueutil/issues/41).",
+    "Use environment variable BLUEUTIL_ALLOW_ROOT=1 to override (sudo BLUEUTIL_ALLOW_ROOT=1 blueutil …).",
+    "",
     "EXPERIMENTAL Exit codes:",
     "   " STRINGIFY(EXIT_SUCCESS) " Success",
     "   " STRINGIFY(EXIT_FAILURE) " General failure",
@@ -670,6 +673,14 @@ void add_cmd(void *args, cmd cmd) {
 FormatterFunc list_devices = list_devices_default;
 
 int main(int argc, char *argv[]) {
+  if (geteuid() == 0) {
+    char *allow_root = getenv("BLUEUTIL_ALLOW_ROOT");
+    if (NULL == allow_root || 0 != strcmp(allow_root, "1")) {
+      eprintf("Error: Not running as root user without environment variable BLUEUTIL_ALLOW_ROOT=1\n");
+      return EXIT_FAILURE;
+    }
+  }
+
   if (!BTAvaliable()) {
     eprintf("Error: Bluetooth not available!\n");
     return EX_UNAVAILABLE;
