@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* List connected devices [#47](https://github.com/toy/blueutil/issues/47) [@toy](https://github.com/toy)
+
 ## v2.7.0 (2020-11-17)
 
 * Refuse to run as root user to prevent possible issues like discoverability getting stuck in some state [#41](https://github.com/toy/blueutil/issues/41) [@toy](https://github.com/toy)

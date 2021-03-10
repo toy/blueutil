@@ -106,6 +106,7 @@ void usage(FILE *io) {
     "        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates",
     "        --paired              list paired devices",
     "        --recent [N]          list recently used devices, 10 by default, 0 to list all",
+    "        --connected           list connected devices",
     "",
     "        --info ID             show information about device",
     "        --is-connected ID     connected state of device as 1 or 0",
@@ -701,6 +702,7 @@ int main(int argc, char *argv[]) {
     arg_inquiry,
     arg_paired,
     arg_recent,
+    arg_connected,
 
     arg_info,
     arg_is_connected,
@@ -727,6 +729,7 @@ int main(int argc, char *argv[]) {
     {"inquiry",         optional_argument, NULL, arg_inquiry},
     {"paired",          no_argument,       NULL, arg_paired},
     {"recent",          optional_argument, NULL, arg_recent},
+    {"connected",       no_argument,       NULL, arg_connected},
 
     {"info",            required_argument, NULL, arg_info},
     {"is-connected",    required_argument, NULL, arg_is_connected},
@@ -845,6 +848,13 @@ int main(int argc, char *argv[]) {
 
           list_devices([IOBluetoothDevice recentDevices:args->max], false);
 
+          return EXIT_SUCCESS;
+        });
+      } break;
+      case arg_connected: {
+        add_cmd(NULL, ^int(__unused void *_args) {
+          NSPredicate *predicate = [NSPredicate predicateWithFormat:@"isConnected == YES"];
+          list_devices([[IOBluetoothDevice pairedDevices] filteredArrayUsingPredicate:predicate], false);
           return EXIT_SUCCESS;
         });
       } break;
