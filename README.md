@@ -16,7 +16,8 @@ Without options outputs current state
     -d, --discoverable        output discoverable state as 1 or 0
     -d, --discoverable STATE  set discoverable state
 
-        --favourites          list favourite devices
+        --favourites, --favorites
+                              list favourite devices
         --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates
         --paired              list paired devices
         --recent [N]          list recently used devices, 10 by default, 0 to list all
@@ -27,8 +28,10 @@ Without options outputs current state
         --connect ID          create a connection to device
         --disconnect ID       close the connection to device
         --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode
-        --add-favourite ID    add to favourites
-        --remove-favourite ID remove from favourites
+        --add-favourite ID, --add-favorite ID
+                              add to favourites
+        --remove-favourite ID, --remove-favorite ID
+                              remove from favourites
 
         --format FORMAT       change output format of info and all listing commands
 

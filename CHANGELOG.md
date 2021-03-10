@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* Support US spelling favorite for switches including favourite [#49](https://github.com/toy/blueutil/issues/49) [@toy](https://github.com/toy)
 * List connected devices [#47](https://github.com/toy/blueutil/issues/47) [@toy](https://github.com/toy)
 
 ## v2.7.0 (2020-11-17)
