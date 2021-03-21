@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## v2.8.0 (2021-03-21)
+
 * Print a warning when no power when running connect, disconnect, inquiry and pair commands [#50](https://github.com/toy/blueutil/issues/50) [@toy](https://github.com/toy)
 * Fix check for RSSI equality when waiting for device [@toy](https://github.com/toy)
 * Support US spelling favorite for switches including favourite [#49](https://github.com/toy/blueutil/issues/49) [@toy](https://github.com/toy)

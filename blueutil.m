@@ -6,9 +6,9 @@
 //
 // Originally written by Frederik Seiffert <ego@frederikseiffert.de> http://www.frederikseiffert.de/blueutil/
 //
-// Copyright (c) 2011-2020 Ivan Kuchin. See <LICENSE.txt> for details.
+// Copyright (c) 2011-2021 Ivan Kuchin. See <LICENSE.txt> for details.
 
-#define VERSION "2.7.0"
+#define VERSION "2.8.0"
 
 #import <IOBluetooth/IOBluetooth.h>
 
