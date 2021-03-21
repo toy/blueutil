@@ -88,6 +88,11 @@ bool BTSetDiscoverableState(enum state state) {
   return BTSetParamState(state, BTDiscoverableState, IOBluetoothPreferenceSetDiscoverableState, "discoverable");
 }
 
+void check_power_on_for(const char *command) {
+  if (BTPowerState()) return;
+  eprintf("Power is required to be on for %s command\n", command);
+}
+
 void usage(FILE *io) {
   static const char *lines[] = {
     "blueutil v" VERSION,
@@ -821,6 +826,8 @@ int main(int argc, char *argv[]) {
         add_cmd(args, ^int(void *_args) {
           struct args_inquiry *args = (struct args_inquiry *)_args;
 
+          check_power_on_for("inquiry");
+
           @autoreleasepool {
             DeviceInquiryRunLoopStopper *stopper = [[[DeviceInquiryRunLoopStopper alloc] init] autorelease];
             IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:stopper];
@@ -898,6 +905,8 @@ int main(int argc, char *argv[]) {
         add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
+          check_power_on_for("connect");
+
           if ([get_device(args->device_id) openConnection] != kIOReturnSuccess) {
             eprintf("Failed to connect \"%s\"\n", args->device_id);
             return EXIT_FAILURE;
@@ -913,6 +922,8 @@ int main(int argc, char *argv[]) {
 
         add_cmd(args, ^int(void *_args) {
           struct args_device_id *args = (struct args_device_id *)_args;
+
+          check_power_on_for("disconnect");
 
           if ([get_device(args->device_id) closeConnection] != kIOReturnSuccess) {
             eprintf("Failed to disconnect \"%s\"\n", args->device_id);
@@ -969,6 +980,8 @@ int main(int argc, char *argv[]) {
 
         add_cmd(args, ^int(void *_args) {
           struct args_pair *args = (struct args_pair *)_args;
+
+          check_power_on_for("pair");
 
           @autoreleasepool {
             IOBluetoothDevice *device = get_device(args->device_id);
