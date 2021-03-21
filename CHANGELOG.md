@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* Fix check for RSSI equality when waiting for device [@toy](https://github.com/toy)
 * Support US spelling favorite for switches including favourite [#49](https://github.com/toy/blueutil/issues/49) [@toy](https://github.com/toy)
 * List connected devices [#47](https://github.com/toy/blueutil/issues/47) [@toy](https://github.com/toy)
 

@@ -567,16 +567,16 @@ const char *hci_error_descriptions[] = {
 @end
 
 #define OP_FUNC(name, operator) \
-  bool op_##name(long a, long b) { return a operator b; }
+  bool op_##name(const long a, const long b) { return a operator b; }
 
 OP_FUNC(gt, >);
 OP_FUNC(ge, >=);
 OP_FUNC(lt, <);
 OP_FUNC(le, <=);
-OP_FUNC(eq, =);
+OP_FUNC(eq, ==);
 OP_FUNC(ne, !=);
 
-typedef bool (*OpFunc)(long a, long b);
+typedef bool (*OpFunc)(const long a, const long b);
 
 #define PARSE_OP_ARG_MATCHER(name, operator)                    \
   if (0 == strcmp(arg, #name) || 0 == strcmp(arg, #operator)) { \
