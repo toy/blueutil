@@ -1,0 +1,119 @@
+#!/usr/bin/env ruby
+
+gem 'rugged', '~> 1.1'
+gem 'rubyzip', '~> 2.3'
+
+require 'rubygems/package'
+require 'rugged'
+require 'zip'
+
+class Release
+  class Base
+    attr_reader :tag, :name
+
+    def initialize(tag)
+      @tag = tag
+      @name = tag.sub(/^v/, 'blueutil-')
+    end
+  end
+
+  class Repo < Base
+    def files
+      @files ||= begin
+        repo = Rugged::Repository.new('.')
+        ref = repo.tags[tag]
+        abort "No such tag #{tag}" unless ref
+        ref.target.tree.walk(:postorder).map do |root, entry|
+          next unless entry[:type] == :blob
+          ["#{name}/#{root}#{entry[:name]}", repo.lookup(entry[:oid]).read_raw.data]
+        end.compact.to_h
+      end
+    end
+  end
+
+  class Archive < Base
+    def basename
+      "#{name}#{extname}"
+    end
+
+    def url
+      "https://github.com/toy/blueutil/archive/refs/tags/#{tag}#{extname}"
+    end
+
+    def data
+      @data ||= IO.popen(%W[curl -sL #{url}], &:read)
+    end
+  end
+
+  class Gzip < Archive
+    def extname
+      '.tar.gz'
+    end
+
+    def files
+      @files ||= Gem::Package::TarReader.new(Zlib::GzipReader.new(StringIO.new(data))).map do |entry|
+        next if entry.directory?
+        next if entry.full_name == 'pax_global_header'
+        [entry.full_name, entry.read]
+      end.compact.to_h
+    end
+  end
+
+  class Zip < Archive
+    def extname
+      '.zip'
+    end
+
+    def files
+      @files ||= ::Zip::File.open_buffer(StringIO.new(data)).entries.map do |entry|
+        next if entry.directory?
+        [entry.name, entry.get_input_stream.read]
+      end.compact.to_h
+    end
+  end
+
+  attr_reader :tag
+
+  def initialize(tag)
+    @tag = tag
+  end
+
+  def repo
+    @repo ||= Repo.new(tag)
+  end
+
+  def archives
+    @archives ||= [Gzip.new(tag), Zip.new(tag)]
+  end
+
+  def check!
+    archives.each do |archive|
+      next if repo.files == archive.files
+
+      $stderr.puts "#{archive.basename} didn't match:"
+      (repo.files.keys | archive.files.keys).sort.each do |path|
+        $stderr.puts "#{path} #{repo.files[path] == archive.files[path] ? 'equal' : 'not equal'}"
+      end
+
+      abort
+    end
+  end
+
+  def print
+    puts '````'
+    archives.each do |archive|
+      puts archive.basename
+      puts "  sha1    #{Digest::SHA1.hexdigest(archive.data)}"
+      puts "  sha256  #{Digest::SHA256.hexdigest(archive.data)}"
+    end
+    puts '````'
+  end
+end
+
+(ARGV.empty? ? [`git describe --tags --abbrev=0`.strip] : ARGV).each do |tag|
+  release = Release.new(tag)
+
+  release.check!
+
+  release.print
+end
