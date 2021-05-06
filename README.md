@@ -59,7 +59,7 @@ FORMAT can be one of:
 Due to possible problems, blueutil will refuse to run as root user (see https://github.com/toy/blueutil/issues/41).
 Use environment variable BLUEUTIL_ALLOW_ROOT=1 to override (sudo BLUEUTIL_ALLOW_ROOT=1 blueutil …).
 
-EXPERIMENTAL Exit codes:
+Exit codes:
    0 Success
    1 General failure
   64 Wrong usage like missing or unexpected arguments, wrong parameters
