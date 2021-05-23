@@ -119,6 +119,7 @@ void usage(FILE *io) {
     "        --connect ID          create a connection to device",
     "        --disconnect ID       close the connection to device",
     "        --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode",
+    "        --unpair ID           EXPERIMENTAL unpair the device",
     "        --add-favourite ID, --add-favorite ID",
     "                              add to favourites",
     "        --remove-favourite ID, --remove-favorite ID",
@@ -154,7 +155,7 @@ void usage(FILE *io) {
     "   " STRINGIFY(EXIT_SUCCESS) " Success",
     "   " STRINGIFY(EXIT_FAILURE) " General failure",
     "  " STRINGIFY(EX_USAGE) " Wrong usage like missing or unexpected arguments, wrong parameters",
-    "  " STRINGIFY(EX_UNAVAILABLE) " Bluetooth not available",
+    "  " STRINGIFY(EX_UNAVAILABLE) " Bluetooth or interface not available",
     "  " STRINGIFY(EX_SOFTWARE) " Internal error",
     "  " STRINGIFY(EX_OSERR) " System error like shortage of memory",
     "  " STRINGIFY(EX_TEMPFAIL) " Timeout error",
@@ -717,6 +718,7 @@ int main(int argc, char *argv[]) {
     arg_connect,
     arg_disconnect,
     arg_pair,
+    arg_unpair,
     arg_add_favourite,
     arg_remove_favourite,
 
@@ -745,6 +747,7 @@ int main(int argc, char *argv[]) {
     {"connect",         required_argument, NULL, arg_connect},
     {"disconnect",      required_argument, NULL, arg_disconnect},
     {"pair",            required_argument, NULL, arg_pair},
+    {"unpair",          required_argument, NULL, arg_unpair},
     {"add-favourite",    required_argument, NULL, arg_add_favourite},
     {"add-favorite",     required_argument, NULL, arg_add_favourite},
     {"remove-favourite", required_argument, NULL, arg_remove_favourite},
@@ -1008,6 +1011,27 @@ int main(int argc, char *argv[]) {
           }
 
           return EXIT_SUCCESS;
+        });
+      } break;
+      case arg_unpair: {
+        ALLOC_ARGS(device_id);
+
+        args->device_id = optarg;
+
+        add_cmd(args, ^int(void *_args) {
+          struct args_device_id *args = (struct args_device_id *)_args;
+
+          IOBluetoothDevice *device = get_device(args->device_id);
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+          if ([device respondsToSelector:@selector(remove)]) {
+            [device performSelector:@selector(remove)];
+#pragma clang diagnostic pop
+            return EXIT_SUCCESS;
+          } else {
+            return EX_UNAVAILABLE;
+          }
         });
       } break;
       case arg_format: {

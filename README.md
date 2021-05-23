@@ -28,6 +28,7 @@ Without options outputs current state
         --connect ID          create a connection to device
         --disconnect ID       close the connection to device
         --pair ID [PIN]       pair with device, optional PIN of up to 16 characters will be used instead of interactive input if requested in specific pair mode
+        --unpair ID           EXPERIMENTAL unpair the device
         --add-favourite ID, --add-favorite ID
                               add to favourites
         --remove-favourite ID, --remove-favorite ID
@@ -63,7 +64,7 @@ Exit codes:
    0 Success
    1 General failure
   64 Wrong usage like missing or unexpected arguments, wrong parameters
-  69 Bluetooth not available
+  69 Bluetooth or interface not available
   70 Internal error
   71 System error like shortage of memory
   75 Timeout error
