@@ -8,7 +8,7 @@
 //
 // Copyright (c) 2011-2021 Ivan Kuchin. See <LICENSE.txt> for details.
 
-#define VERSION "2.8.0"
+#define VERSION "2.9.0"
 
 #import <IOBluetooth/IOBluetooth.h>
 
