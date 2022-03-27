@@ -838,10 +838,13 @@ int main(int argc, char *argv[]) {
             [inquirer setInquiryLength:args->duration];
 
             [inquirer start];
+            
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, args->duration * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                [inquirer stop];
+                list_devices([inquirer foundDevices], false);
+            });
+              
             CFRunLoopRun();
-            [inquirer stop];
-
-            list_devices([inquirer foundDevices], false);
           }
 
           return EXIT_SUCCESS;
