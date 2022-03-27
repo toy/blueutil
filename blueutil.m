@@ -835,7 +835,7 @@ int main(int argc, char *argv[]) {
             DeviceInquiryRunLoopStopper *stopper = [[[DeviceInquiryRunLoopStopper alloc] init] autorelease];
             IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:stopper];
 
-            [inquirer setInquiryLength:args->duration];
+//            [inquirer setInquiryLength:args->duration]; Seems buggy on latest versions
 
             [inquirer start];
             
