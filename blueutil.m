@@ -847,11 +847,14 @@ int main(int argc, char *argv[]) {
             DeviceInquiryRunLoopStopper *stopper = [[[DeviceInquiryRunLoopStopper alloc] init] autorelease];
             IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:stopper];
 
-            [inquirer setInquiryLength:args->duration];
-
             [inquirer start];
+
+            // inquiry length seems to be ingored starting with Monterey
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, args->duration * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+              [inquirer stop];
+            });
+
             CFRunLoopRun();
-            [inquirer stop];
 
             list_devices([inquirer foundDevices], false);
           }
