@@ -2,6 +2,10 @@
 
 ## unreleased
 
+## v2.9.1 (2022-04-05)
+
+* Fix bluetooth devices inquiry for macOS Monterey [#66](https://github.com/toy/blueutil/pull/66) [@RaphaelKn](https://github.com/RaphaelKn)
+
 ## v2.9.0 (2021-05-23)
 
 * Add unpairing/removing pairing functionality [#27](https://github.com/toy/blueutil/issues/27) [#31](https://github.com/toy/blueutil/issues/31) [#32](https://github.com/toy/blueutil/issues/32) [#46](https://github.com/toy/blueutil/issues/46) [#53](https://github.com/toy/blueutil/issues/53) [@toy](https://github.com/toy)
