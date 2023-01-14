@@ -158,6 +158,18 @@ To release new version:
 ./release major|minor|patch
 ```
 
+To create release on github:
+
+```sh
+./verify_release
+```
+
+If there are no validation errors, copy generated markdown to description of new release:
+
+```sh
+open "https://github.com/toy/blueutil/releases/new?tag=$(git describe --tags --abbrev=0)"
+```
+
 ## Copyright
 
 Originally written by Frederik Seiffert ego@frederikseiffert.de http://www.frederikseiffert.de/blueutil/
