@@ -1,6 +1,6 @@
 Originally written by Frederik Seiffert <ego@frederikseiffert.de>
 
-Copyright (c) 2011-2021 Ivan Kuchin
+Copyright (c) 2011-2023 Ivan Kuchin
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
