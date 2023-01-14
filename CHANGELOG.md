@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* When disconnecting, explicitly wait for device disconnection [#70](https://github.com/toy/blueutil/issues/70) [@toy](https://github.com/toy)
+
 ## v2.9.0 (2021-05-23)
 
 * Add unpairing/removing pairing functionality [#27](https://github.com/toy/blueutil/issues/27) [#31](https://github.com/toy/blueutil/issues/31) [#32](https://github.com/toy/blueutil/issues/32) [#46](https://github.com/toy/blueutil/issues/46) [#53](https://github.com/toy/blueutil/issues/53) [@toy](https://github.com/toy)

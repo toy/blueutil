@@ -928,9 +928,20 @@ int main(int argc, char *argv[]) {
 
           check_power_on_for("disconnect");
 
-          if ([get_device(args->device_id) closeConnection] != kIOReturnSuccess) {
-            eprintf("Failed to disconnect \"%s\"\n", args->device_id);
-            return EXIT_FAILURE;
+          @autoreleasepool {
+            IOBluetoothDevice *device = get_device(args->device_id);
+
+            DeviceNotificationRunLoopStopper *stopper =
+              [[[DeviceNotificationRunLoopStopper alloc] initWithExpectedDevice:device] autorelease];
+
+            [device registerForDisconnectNotification:stopper selector:@selector(notification:fromDevice:)];
+
+            if ([device closeConnection] != kIOReturnSuccess) {
+              eprintf("Failed to disconnect \"%s\"\n", args->device_id);
+              return EXIT_FAILURE;
+            }
+
+            CFRunLoopRun();
           }
 
           return EXIT_SUCCESS;
