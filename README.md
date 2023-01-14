@@ -161,4 +161,5 @@ To release new version:
 ## Copyright
 
 Originally written by Frederik Seiffert ego@frederikseiffert.de http://www.frederikseiffert.de/blueutil/
+
 Copyright (c) 2011-2021 Ivan Kuchin. See [LICENSE.txt](LICENSE.txt) for details.
