@@ -277,14 +277,14 @@ IOBluetoothDevice *get_device(char *id) {
       exit(EXIT_FAILURE);
     }
   } else {
-    NSArray *recentDevices = [IOBluetoothDevice recentDevices:0];
+    NSArray *pairedDevices = [IOBluetoothDevice pairedDevices];
 
-    if (!recentDevices) {
-      eprintf("No recent devices to search for: %s\n", id);
+    if (!pairedDevices) {
+      eprintf("No paired devices to search for: %s\n", id);
       exit(EXIT_FAILURE);
     }
 
-    NSArray *byName = [recentDevices filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@", nsId]];
+    NSArray *byName = [pairedDevices filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"name == %@", nsId]];
     if (byName.count > 0) {
       device = byName.firstObject;
     }
