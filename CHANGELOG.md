@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* Document macOS >= 12 silently ignoring favourites and recent access date [#63](https://github.com/toy/blueutil/issues/63) [#84](https://github.com/toy/blueutil/issues/84) [#89](https://github.com/toy/blueutil/issues/89) [@toy](https://github.com/toy)
+
 ## v2.9.1 (2023-01-14)
 
 * When disconnecting, explicitly wait for device disconnection [#70](https://github.com/toy/blueutil/issues/70) [@toy](https://github.com/toy)
