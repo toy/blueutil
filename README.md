@@ -47,7 +47,7 @@ Without options outputs current state
     -v, --version             show version
 
 STATE can be one of: 1, on, 0, off, toggle
-ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in used devices
+ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in paired or recent devices
 OP can be one of: >, >=, <, <=, =, !=; or equivalents: gt, ge, lt, le, eq, ne
 PERIOD is in seconds, defaults to 1
 TIMEOUT is in seconds, default value 0 doesn't add timeout
