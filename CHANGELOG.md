@@ -3,6 +3,7 @@
 ## unreleased
 
 * Document macOS >= 12 silently ignoring favourites and recent access date [#63](https://github.com/toy/blueutil/issues/63) [#84](https://github.com/toy/blueutil/issues/84) [#89](https://github.com/toy/blueutil/issues/89) [@toy](https://github.com/toy)
+* In addition to recent devices, paired devices will also be searched when connect, disconnect, get information about, and check connected state of device by name [#62](https://github.com/toy/blueutil/issues/62) [#88](https://github.com/toy/blueutil/pull/88) [@azuwis](https://github.com/azuwis)
 
 ## v2.9.1 (2023-01-14)
 
