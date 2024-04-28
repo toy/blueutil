@@ -176,4 +176,4 @@ open "https://github.com/toy/blueutil/releases/new?tag=$(git describe --tags --a
 
 Originally written by Frederik Seiffert ego@frederikseiffert.de http://www.frederikseiffert.de/blueutil/
 
-Copyright (c) 2011-2023 Ivan Kuchin. See [LICENSE.txt](LICENSE.txt) for details.
+Copyright (c) 2011-2024 Ivan Kuchin. See [LICENSE.txt](LICENSE.txt) for details.
