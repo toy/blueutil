@@ -584,8 +584,10 @@ const char *hci_error_descriptions[] = {
 }
 @end
 
-#define OP_FUNC(name, operator) \
-  bool op_##name(const long a, const long b) { return a operator b; }
+#define OP_FUNC(name, operator)                \
+  bool op_##name(const long a, const long b) { \
+    return a operator b;                       \
+  }
 
 OP_FUNC(gt, >);
 OP_FUNC(ge, >=);
@@ -850,9 +852,11 @@ int main(int argc, char *argv[]) {
             [inquirer start];
 
             // inquiry length seems to be ingored starting with Monterey
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, args->duration * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-              [inquirer stop];
-            });
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, args->duration * NSEC_PER_SEC),
+              dispatch_get_main_queue(),
+              ^{
+                [inquirer stop];
+              });
 
             CFRunLoopRun();
 
