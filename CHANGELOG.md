@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* Inform the user on receiving abort signal, that it may be due to absence of permission [#95](https://github.com/toy/blueutil/issues/95) [@toy](https://github.com/toy)
+
 ## v2.10.0 (2024-04-28)
 
 * Document macOS >= 12 silently ignoring favourites and recent access date [#63](https://github.com/toy/blueutil/issues/63) [#84](https://github.com/toy/blueutil/issues/84) [#89](https://github.com/toy/blueutil/issues/89) [@toy](https://github.com/toy)

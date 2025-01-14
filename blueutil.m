@@ -14,6 +14,7 @@
 
 #include <getopt.h>
 #include <regex.h>
+#include <signal.h>
 #include <sysexits.h>
 
 // https://stackoverflow.com/a/12648993/96823
@@ -166,6 +167,14 @@ void usage(FILE *io) {
   for (size_t i = 0, _i = sizeof(lines) / sizeof(lines[0]); i < _i; i++) {
     fprintf(io, "%s\n", lines[i]);
   }
+}
+
+void handle_abort(int signal) {
+  eprintf("Error: Received abort signal, it may be due to absence of access to Bluetooth API, check that current "
+          "terminal application has access in System Settings > Privacy & Security > Bluetooth\n");
+
+  // keep the exit code
+  exit(128 + signal);
 }
 
 char *next_arg(int argc, char *argv[], bool required) {
@@ -697,6 +706,8 @@ void add_cmd(void *args, cmd cmd) {
 FormatterFunc list_devices = list_devices_default;
 
 int main(int argc, char *argv[]) {
+  signal(SIGABRT, handle_abort);
+
   if (geteuid() == 0) {
     char *allow_root = getenv("BLUEUTIL_ALLOW_ROOT");
     if (NULL == allow_root || 0 != strcmp(allow_root, "1")) {
