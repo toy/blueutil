@@ -17,6 +17,8 @@
 #include <signal.h>
 #include <sysexits.h>
 
+#define EX_SIGABRT (128 + SIGABRT)
+
 #define eprintf(...) fprintf(stderr, ##__VA_ARGS__)
 
 void *assert_alloc(void *pointer) {
@@ -170,6 +172,7 @@ void usage(FILE *io) {
     {EX_SOFTWARE, "Internal error"},
     {EX_OSERR, "System error like shortage of memory"},
     {EX_TEMPFAIL, "Timeout error"},
+    {EX_SIGABRT, "Abort signal may indicate absence of access to Bluetooth API"},
   };
 
   for (size_t i = 0, _i = sizeof(exit_codes) / sizeof(exit_codes[0]); i < _i; i++) {
@@ -177,12 +180,12 @@ void usage(FILE *io) {
   }
 }
 
-void handle_abort(int signal) {
+void handle_abort(__unused int signal) {
   eprintf("Error: Received abort signal, it may be due to absence of access to Bluetooth API, check that current "
           "terminal application has access in System Settings > Privacy & Security > Bluetooth\n");
 
   // keep the exit code
-  exit(128 + signal);
+  exit(EX_SIGABRT);
 }
 
 char *next_arg(int argc, char *argv[], bool required) {

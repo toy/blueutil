@@ -70,6 +70,7 @@ Exit codes:
   70 Internal error
   71 System error like shortage of memory
   75 Timeout error
+ 134 Abort signal may indicate absence of access to Bluetooth API
 ```
 <!--]USAGE-->
 
