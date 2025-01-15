@@ -17,10 +17,6 @@
 #include <signal.h>
 #include <sysexits.h>
 
-// https://stackoverflow.com/a/12648993/96823
-#define STRINGIFY_(x) #x
-#define STRINGIFY(x) STRINGIFY_(x)
-
 #define eprintf(...) fprintf(stderr, ##__VA_ARGS__)
 
 void *assert_alloc(void *pointer) {
@@ -155,17 +151,29 @@ void usage(FILE *io) {
     "Use environment variable BLUEUTIL_ALLOW_ROOT=1 to override (sudo BLUEUTIL_ALLOW_ROOT=1 blueutil …).",
     "",
     "Exit codes:",
-    "   " STRINGIFY(EXIT_SUCCESS) " Success",
-    "   " STRINGIFY(EXIT_FAILURE) " General failure",
-    "  " STRINGIFY(EX_USAGE) " Wrong usage like missing or unexpected arguments, wrong parameters",
-    "  " STRINGIFY(EX_UNAVAILABLE) " Bluetooth or interface not available",
-    "  " STRINGIFY(EX_SOFTWARE) " Internal error",
-    "  " STRINGIFY(EX_OSERR) " System error like shortage of memory",
-    "  " STRINGIFY(EX_TEMPFAIL) " Timeout error",
   };
 
   for (size_t i = 0, _i = sizeof(lines) / sizeof(lines[0]); i < _i; i++) {
     fprintf(io, "%s\n", lines[i]);
+  }
+
+  struct exit_code {
+    unsigned char code;
+    const char *description;
+  };
+
+  struct exit_code exit_codes[] = {
+    {EXIT_SUCCESS, "Success"},
+    {EXIT_FAILURE, "General failure"},
+    {EX_USAGE, "Wrong usage like missing or unexpected arguments, wrong parameters"},
+    {EX_UNAVAILABLE, "Bluetooth or interface not available"},
+    {EX_SOFTWARE, "Internal error"},
+    {EX_OSERR, "System error like shortage of memory"},
+    {EX_TEMPFAIL, "Timeout error"},
+  };
+
+  for (size_t i = 0, _i = sizeof(exit_codes) / sizeof(exit_codes[0]); i < _i; i++) {
+    fprintf(io, " %3d %s\n", exit_codes[i].code, exit_codes[i].description);
   }
 }
 
