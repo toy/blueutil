@@ -94,7 +94,7 @@ void check_power_on_for(const char *command) {
 
 void usage(FILE *io) {
   static const char *lines[] = {
-    "blueutil v" VERSION,
+    ("blueutil v" VERSION),
     "",
     "Usage:",
     "  blueutil [options]",
