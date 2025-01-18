@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## v2.11.0 (2025-01-18)
+
 * Inform the user on receiving abort signal, that it may be due to absence of permission [#95](https://github.com/toy/blueutil/issues/95) [@toy](https://github.com/toy)
 
 ## v2.10.0 (2024-04-28)
