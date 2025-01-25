@@ -2,6 +2,12 @@
 
 CLI for bluetooth on OSX: power, discoverable state, list, inquire devices, connect, info, …
 
+## Notes
+
+Uses private API from IOBluetooth framework (i.e. `IOBluetoothPreference*()`).
+
+Opening Bluetooth preference pane always turns on discoverability if bluetooth power is on or if it is switched on when preference pane is open, this change of state is not reported by the function used by `blueutil`.
+
 ## Usage
 
 <!--USAGE[-->
@@ -129,13 +135,7 @@ make uninstall
 
 You may need to prefix install/update and uninstall make commands with `sudo`.
 
-## Notes
-
-Uses private API from IOBluetooth framework (i.e. `IOBluetoothPreference*()`).
-
-Opening Bluetooth preference pane always turns on discoverability if bluetooth power is on or if it is switched on when preference pane is open, this change of state is not reported by the function used by `blueutil`.
-
-### Development
+## Development
 
 To build and update usage:
 
