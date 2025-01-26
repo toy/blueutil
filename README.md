@@ -135,6 +135,16 @@ make uninstall
 
 You may need to prefix install/update and uninstall make commands with `sudo`.
 
+## Alternative Interface
+For a TUI (text-based user interface) build on top of `blueutil`, you can take a look at [blueutil-tui].
+It offers a simple interface for the following `blueutil` functionalities:
+- displaying paired devices
+- searching devices
+- pairing and unpairing devices
+- connecting and disconnecting devices
+
+It's written in python using the [textual] framework.
+
 ## Development
 
 To build and update usage:
@@ -178,3 +188,7 @@ open "https://github.com/toy/blueutil/releases/new?tag=$(git describe --tags --a
 Originally written by Frederik Seiffert ego@frederikseiffert.de http://www.frederikseiffert.de/blueutil/
 
 Copyright (c) 2011-2025 Ivan Kuchin. See [LICENSE.txt](LICENSE.txt) for details.
+
+
+[textual]: https://textual.textualize.io
+[blueutil-tui]: https://github.com/Zaloog/blueutil-tui
