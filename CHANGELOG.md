@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## v2.12.0 (2025-02-02)
+
 * Hide debug log messages from IOBluetoothDeviceInquiry [@toy](https://github.com/toy)
 
 ## v2.11.0 (2025-01-18)
