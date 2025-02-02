@@ -49,6 +49,8 @@ void IOBluetoothPreferenceSetControllerPowerState(int state);
 int IOBluetoothPreferenceGetDiscoverableState();
 void IOBluetoothPreferenceSetDiscoverableState(int state);
 
+void _NSSetLogCStringFunction(void(*)(const char*, unsigned, BOOL));
+
 // short names
 typedef int (*GetterFunc)();
 typedef bool (*SetterFunc)(int);
@@ -90,6 +92,19 @@ bool BTSetDiscoverableState(enum state state) {
 void check_power_on_for(const char *command) {
   if (BTPowerState()) return;
   eprintf("Power is required to be on for %s command\n", command);
+}
+
+const char *filter_out_ns_log[] = {
+  "-[IOBluetoothDeviceInquiry initWithDelegate:]",
+  "-[IOBluetoothDeviceInquiry dealloc]",
+};
+
+void CustomNSLogOutput(const char* message, __unused unsigned length, __unused BOOL withSysLogBanner) {
+  for (size_t i = 0, _i = sizeof(filter_out_ns_log) / sizeof(filter_out_ns_log[0]); i < _i; i++) {
+    if (strstr(message, filter_out_ns_log[i]) != NULL) return;
+  }
+
+  eprintf("%s\n", message);
 }
 
 void usage(FILE *io) {
@@ -726,6 +741,8 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
   }
+
+  _NSSetLogCStringFunction(CustomNSLogOutput);
 
   if (!BTAvaliable()) {
     eprintf("Error: Bluetooth not available!\n");
