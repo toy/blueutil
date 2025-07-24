@@ -51,6 +51,34 @@ void IOBluetoothPreferenceSetDiscoverableState(int state);
 
 void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
 
+// Mock IOBluetoothDevice for subprocess method
+@interface MockBluetoothDevice : NSObject
+@property (nonatomic, strong) NSString *address;
+@property (nonatomic, strong) NSString *name;
+@property (nonatomic, assign) BOOL paired;
+@property (nonatomic, assign) BOOL connected;
+@property (nonatomic, assign) BOOL favorite;
+@property (nonatomic, strong) NSDate *recentAccessDate;
+@property (nonatomic, assign) int rssi;
+- (NSString *)addressString;
+- (BOOL)isConnected;
+- (BOOL)isPaired;
+- (BOOL)isFavorite;
+- (BOOL)isIncoming;
+- (char)RSSI;
+- (char)rawRSSI;
+@end
+
+@implementation MockBluetoothDevice
+- (NSString *)addressString { return self.address; }
+- (BOOL)isConnected { return self.connected; }
+- (BOOL)isPaired { return self.paired; }
+- (BOOL)isFavorite { return self.favorite; }
+- (BOOL)isIncoming { return NO; } // Default to master mode
+- (char)RSSI { return (char)self.rssi; }
+- (char)rawRSSI { return (char)self.rssi; }
+@end
+
 // short names
 typedef int (*GetterFunc)();
 typedef bool (*SetterFunc)(int);
@@ -141,6 +169,8 @@ void usage(FILE *io) {
     "",
     "        --format FORMAT       change output format of info and all listing commands",
     "",
+    "        --use-system-profiler use system_profiler for paired device queries",
+    "",
     "        --wait-connect ID [TIMEOUT]",
     "                              EXPERIMENTAL wait for device to connect",
     "        --wait-disconnect ID [TIMEOUT]",
@@ -166,6 +196,9 @@ void usage(FILE *io) {
     "",
     "Due to possible problems, blueutil will refuse to run as root user (see https://github.com/toy/blueutil/issues/41).",
     "Use environment variable BLUEUTIL_ALLOW_ROOT=1 to override (sudo BLUEUTIL_ALLOW_ROOT=1 blueutil …).",
+    "",
+    "Environment variables:",
+    "  BLUEUTIL_USE_SYSTEM_PROFILER=1  use system_profiler for paired device queries (same as --use-system-profiler)",
     "",
     "Exit codes:",
   };
@@ -301,6 +334,90 @@ bool parse_signed_long_arg(char *arg, long *number) {
   }
 }
 
+NSArray *get_paired_devices_subprocess() {
+  NSTask *task = [[NSTask alloc] init];
+  task.launchPath = @"/usr/sbin/system_profiler";
+  task.arguments = @[@"SPBluetoothDataType", @"-xml"];
+  
+  NSPipe *pipe = [NSPipe pipe];
+  task.standardOutput = pipe;
+  task.standardError = [NSPipe pipe];
+  
+  [task launch];
+  [task waitUntilExit];
+  
+  NSData *data = [[pipe fileHandleForReading] readDataToEndOfFile];
+  if (task.terminationStatus != 0 || data.length == 0) {
+    return @[];
+  }
+  
+  NSError *error = nil;
+  NSArray *plist = [NSPropertyListSerialization propertyListWithData:data
+                                                               options:NSPropertyListImmutable
+                                                                format:nil
+                                                                 error:&error];
+  if (error || !plist || plist.count == 0) {
+    return @[];
+  }
+  
+  NSMutableArray *pairedDevices = [NSMutableArray array];
+  
+  // Navigate the system_profiler XML structure to find paired devices
+  for (NSDictionary *item in plist) {
+    NSArray *items = item[@"_items"];
+    if (!items) continue;
+    
+    for (NSDictionary *bluetoothItem in items) {
+      // Process connected devices
+      NSArray *connectedDevices = bluetoothItem[@"device_connected"];
+      if (connectedDevices) {
+        for (NSDictionary *deviceDict in connectedDevices) {
+          for (NSString *deviceName in deviceDict) {
+            NSDictionary *deviceInfo = deviceDict[deviceName];
+            MockBluetoothDevice *mockDevice = [[MockBluetoothDevice alloc] init];
+            mockDevice.address = deviceInfo[@"device_address"] ?: @"";
+            mockDevice.name = deviceName;
+            mockDevice.paired = YES;
+            mockDevice.connected = YES;
+            mockDevice.favorite = NO;
+            mockDevice.recentAccessDate = [NSDate date];
+            mockDevice.rssi = deviceInfo[@"device_rssi"] ? [deviceInfo[@"device_rssi"] intValue] : -129;
+            
+            [pairedDevices addObject:mockDevice];
+          }
+        }
+      }
+      
+      // Process not connected devices
+      NSArray *notConnectedDevices = bluetoothItem[@"device_not_connected"];
+      if (notConnectedDevices) {
+        for (NSDictionary *deviceDict in notConnectedDevices) {
+          for (NSString *deviceName in deviceDict) {
+            NSDictionary *deviceInfo = deviceDict[deviceName];
+            MockBluetoothDevice *mockDevice = [[MockBluetoothDevice alloc] init];
+            mockDevice.address = deviceInfo[@"device_address"] ?: @"";
+            mockDevice.name = deviceName;
+            mockDevice.paired = YES;
+            mockDevice.connected = NO;
+            mockDevice.favorite = NO;
+            mockDevice.recentAccessDate = [NSDate date];
+            mockDevice.rssi = -129; // Not connected, so no RSSI
+            
+            [pairedDevices addObject:mockDevice];
+          }
+        }
+      }
+    }
+  }
+  
+  return [pairedDevices copy];
+}
+
+NSArray *get_paired_devices() {
+  extern bool use_subprocess_method;
+  return use_subprocess_method ? get_paired_devices_subprocess() : [IOBluetoothDevice pairedDevices];
+}
+
 IOBluetoothDevice *get_device(char *id) {
   NSString *nsId = [NSString stringWithCString:id encoding:[NSString defaultCStringEncoding]];
 
@@ -316,7 +433,7 @@ IOBluetoothDevice *get_device(char *id) {
   } else {
     NSMutableArray *searchDevices = [NSMutableArray new];
 
-    NSArray *pairedDevices = [IOBluetoothDevice pairedDevices];
+    NSArray *pairedDevices = get_paired_devices();
     if (pairedDevices) {
       [searchDevices addObjectsFromArray:pairedDevices];
     }
@@ -651,6 +768,7 @@ bool parse_op_arg(const char *arg, OpFunc *op, const char **op_name) {
   return false;
 }
 
+
 @interface DeviceNotificationRunLoopStopper : NSObject
 @end
 @implementation DeviceNotificationRunLoopStopper {
@@ -730,6 +848,7 @@ void add_cmd(void *args, cmd cmd) {
 }
 
 FormatterFunc list_devices = list_devices_default;
+bool use_subprocess_method = false;
 
 int main(int argc, char *argv[]) {
   signal(SIGABRT, handle_abort);
@@ -740,6 +859,12 @@ int main(int argc, char *argv[]) {
       eprintf("Error: Not running as root user without environment variable BLUEUTIL_ALLOW_ROOT=1\n");
       return EXIT_FAILURE;
     }
+  }
+
+  // Check environment variable for system profiler usage
+  char *use_system_profiler_env = getenv("BLUEUTIL_USE_SYSTEM_PROFILER");
+  if (use_system_profiler_env && 0 == strcmp(use_system_profiler_env, "1")) {
+    use_subprocess_method = true;
   }
 
   _NSSetLogCStringFunction(CustomNSLogOutput);
@@ -780,6 +905,8 @@ int main(int argc, char *argv[]) {
     arg_wait_connect,
     arg_wait_disconnect,
     arg_wait_rssi,
+    
+    arg_use_system_profiler,
   };
 
   const char *optstring = "p::d::hv";
@@ -811,6 +938,8 @@ int main(int argc, char *argv[]) {
     {"wait-connect",    required_argument, NULL, arg_wait_connect},
     {"wait-disconnect", required_argument, NULL, arg_wait_disconnect},
     {"wait-rssi",       required_argument, NULL, arg_wait_rssi},
+
+    {"use-system-profiler", no_argument,   NULL, arg_use_system_profiler},
 
     {"help",            no_argument,       NULL, arg_help},
     {"version",         no_argument,       NULL, arg_version},
@@ -863,7 +992,7 @@ int main(int argc, char *argv[]) {
       } break;
       case arg_paired: {
         add_cmd(NULL, ^int(__unused void *_args) {
-          list_devices([IOBluetoothDevice pairedDevices], false);
+          list_devices(get_paired_devices(), false);
           return EXIT_SUCCESS;
         });
       } break;
@@ -928,7 +1057,7 @@ int main(int argc, char *argv[]) {
       case arg_connected: {
         add_cmd(NULL, ^int(__unused void *_args) {
           NSPredicate *predicate = [NSPredicate predicateWithFormat:@"isConnected == YES"];
-          list_devices([[IOBluetoothDevice pairedDevices] filteredArrayUsingPredicate:predicate], false);
+          list_devices([get_paired_devices() filteredArrayUsingPredicate:predicate], false);
           return EXIT_SUCCESS;
         });
       } break;
@@ -1247,6 +1376,9 @@ int main(int argc, char *argv[]) {
 
           return EXIT_SUCCESS;
         });
+      } break;
+      case arg_use_system_profiler: {
+        use_subprocess_method = true;
       } break;
       case arg_version: {
         printf(VERSION "\n");

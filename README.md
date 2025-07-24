@@ -8,6 +8,12 @@ Uses private API from IOBluetooth framework (i.e. `IOBluetoothPreference*()`).
 
 Opening Bluetooth preference pane always turns on discoverability if bluetooth power is on or if it is switched on when preference pane is open, this change of state is not reported by the function used by `blueutil`.
 
+## Alternative Method
+
+By default, `blueutil` uses IOBluetooth framework APIs to query paired devices. As an alternative, you can use the `--use-system-profiler` option or set the `BLUEUTIL_USE_SYSTEM_PROFILER=1` environment variable to use the `system_profiler` command instead.
+
+The system_profiler method resolves an issue where some multi-point Bluetooth devices (devices that can connect to multiple devices simultaneously) may not report their connection status correctly through the IOBluetooth APIs, but do show the correct status via system_profiler.
+
 ## Usage
 
 <!--USAGE[-->
@@ -42,6 +48,8 @@ Without options outputs current state
 
         --format FORMAT       change output format of info and all listing commands
 
+        --use-system-profiler use system_profiler instead of IOBluetooth API for paired device queries
+
         --wait-connect ID [TIMEOUT]
                               EXPERIMENTAL wait for device to connect
         --wait-disconnect ID [TIMEOUT]
@@ -68,6 +76,9 @@ Favourite devices and recent access date are not stored starting with macOS 12/M
 Due to possible problems, blueutil will refuse to run as root user (see https://github.com/toy/blueutil/issues/41).
 Use environment variable BLUEUTIL_ALLOW_ROOT=1 to override (sudo BLUEUTIL_ALLOW_ROOT=1 blueutil …).
 
+Environment variables:
+  BLUEUTIL_USE_SYSTEM_PROFILER=1  use system_profiler instead of IOBluetooth API (same as --use-system-profiler)
+
 Exit codes:
    0 Success
    1 General failure
@@ -79,6 +90,25 @@ Exit codes:
  134 Abort signal may indicate absence of access to Bluetooth API
 ```
 <!--]USAGE-->
+
+### Examples
+
+List paired devices using IOBluetooth API (default):
+```sh
+blueutil --paired
+```
+
+List paired devices using system_profiler:
+```sh
+blueutil --use-system-profiler --paired
+```
+
+Set environment variable to always use system_profiler:
+```sh
+export BLUEUTIL_USE_SYSTEM_PROFILER=1
+blueutil --paired
+blueutil --connected
+```
 
 ## Install/update/uninstall
 
