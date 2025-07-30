@@ -49,7 +49,7 @@ void IOBluetoothPreferenceSetControllerPowerState(int state);
 int IOBluetoothPreferenceGetDiscoverableState();
 void IOBluetoothPreferenceSetDiscoverableState(int state);
 
-void _NSSetLogCStringFunction(void(*)(const char*, unsigned, BOOL));
+void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
 
 // short names
 typedef int (*GetterFunc)();
@@ -99,7 +99,7 @@ const char *filter_out_ns_log[] = {
   "-[IOBluetoothDeviceInquiry dealloc]",
 };
 
-void CustomNSLogOutput(const char* message, __unused unsigned length, __unused BOOL withSysLogBanner) {
+void CustomNSLogOutput(const char *message, __unused unsigned length, __unused BOOL withSysLogBanner) {
   for (size_t i = 0, _i = sizeof(filter_out_ns_log) / sizeof(filter_out_ns_log[0]); i < _i; i++) {
     if (strstr(message, filter_out_ns_log[i]) != NULL) return;
   }
