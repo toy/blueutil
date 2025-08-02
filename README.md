@@ -10,9 +10,11 @@ Opening Bluetooth preference pane always turns on discoverability if bluetooth p
 
 ## Alternative Method
 
-By default, `blueutil` uses IOBluetooth framework APIs to query paired devices. As an alternative, you can use the `--use-system-profiler` option or set the `BLUEUTIL_USE_SYSTEM_PROFILER=1` environment variable to use the `system_profiler` command instead.
+By default, `blueutil` uses IOBluetooth framework APIs to query paired devices. As an alternative, you can set the `BLUEUTIL_USE_SYSTEM_PROFILER=1` environment variable to use the `system_profiler` command instead.
 
 The system_profiler method resolves an issue where some multi-point Bluetooth devices (devices that can connect to multiple devices simultaneously) may not report their connection status correctly through the IOBluetooth APIs, but do show the correct status via system_profiler.
+
+**Note:** The system_profiler method is experimental and may have compatibility issues with some blueutil commands.
 
 ## Usage
 
@@ -48,7 +50,6 @@ Without options outputs current state
 
         --format FORMAT       change output format of info and all listing commands
 
-        --use-system-profiler use system_profiler instead of IOBluetooth API for paired device queries
 
         --wait-connect ID [TIMEOUT]
                               EXPERIMENTAL wait for device to connect
@@ -77,7 +78,7 @@ Due to possible problems, blueutil will refuse to run as root user (see https://
 Use environment variable BLUEUTIL_ALLOW_ROOT=1 to override (sudo BLUEUTIL_ALLOW_ROOT=1 blueutil …).
 
 Environment variables:
-  BLUEUTIL_USE_SYSTEM_PROFILER=1  use system_profiler instead of IOBluetooth API (same as --use-system-profiler)
+  BLUEUTIL_USE_SYSTEM_PROFILER=1  EXPERIMENTAL: use system_profiler instead of IOBluetoothDevice API for paired device queries
 
 Exit codes:
    0 Success
@@ -98,9 +99,14 @@ List paired devices using IOBluetooth API (default):
 blueutil --paired
 ```
 
-List paired devices using system_profiler:
+Use system_profiler for a single command:
 ```sh
-blueutil --use-system-profiler --paired
+BLUEUTIL_USE_SYSTEM_PROFILER=1 blueutil --paired
+```
+
+Use system_profiler outside of shell (e.g., in scripts):
+```sh
+/usr/bin/env BLUEUTIL_USE_SYSTEM_PROFILER=1 blueutil --paired
 ```
 
 Set environment variable to always use system_profiler:
