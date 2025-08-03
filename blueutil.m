@@ -1017,7 +1017,6 @@ int main(int argc, char *argv[]) {
     {"wait-disconnect", required_argument, NULL, arg_wait_disconnect},
     {"wait-rssi",       required_argument, NULL, arg_wait_rssi},
 
-
     {"help",            no_argument,       NULL, arg_help},
     {"version",         no_argument,       NULL, arg_version},
 

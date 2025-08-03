@@ -50,7 +50,6 @@ Without options outputs current state
 
         --format FORMAT       change output format of info and all listing commands
 
-
         --wait-connect ID [TIMEOUT]
                               EXPERIMENTAL wait for device to connect
         --wait-disconnect ID [TIMEOUT]
