@@ -164,6 +164,7 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
 
 // forward declarations
 NSArray *get_paired_devices_subprocess();
+NSArray *get_paired_devices();
 
 // short names
 typedef int (*GetterFunc)();
@@ -419,9 +420,79 @@ bool parse_signed_long_arg(char *arg, long *number) {
   }
 }
 
-NSArray *get_paired_devices() {
-  extern bool use_subprocess_method;
-  return use_subprocess_method ? get_paired_devices_subprocess() : [IOBluetoothDevice pairedDevices];
+NSArray *get_paired_devices_subprocess() {
+  NSTask *task = [[NSTask alloc] init];
+  task.launchPath = @"/usr/sbin/system_profiler";
+  task.arguments = @[@"SPBluetoothDataType", @"-xml"];
+
+  NSPipe *pipe = [NSPipe pipe];
+  task.standardOutput = pipe;
+  task.standardError = [NSPipe pipe];
+
+  [task launch];
+  [task waitUntilExit];
+
+  NSData *data = [[pipe fileHandleForReading] readDataToEndOfFile];
+  if (task.terminationStatus != 0 || data.length == 0) {
+    return @[];
+  }
+
+  NSError *error = nil;
+  NSArray *plist = [NSPropertyListSerialization propertyListWithData:data
+                                                             options:NSPropertyListImmutable
+                                                              format:nil
+                                                               error:&error];
+  if (error || !plist || plist.count == 0) {
+    return @[];
+  }
+
+  NSMutableArray *pairedDevices = [NSMutableArray array];
+
+  // Navigate the system_profiler XML structure to find paired devices
+  for (NSDictionary *item in plist) {
+    NSArray *items = item[@"_items"];
+    if (!items) continue;
+
+    for (NSDictionary *bluetoothItem in items) {
+      // Process connected devices
+      NSArray *connectedDevices = bluetoothItem[@"device_connected"];
+      if (connectedDevices) {
+        for (NSDictionary *deviceDict in connectedDevices) {
+          for (NSString *deviceName in deviceDict) {
+            NSDictionary *deviceInfo = deviceDict[deviceName];
+            MockBluetoothDevice *mockDevice = [[MockBluetoothDevice alloc]
+               initWithAddress:deviceInfo[@"device_address"] ?: @""
+                          name:deviceName
+                     connected:YES
+              recentAccessDate:NULL
+                          rssi:deviceInfo[@"device_rssi"] ? [deviceInfo[@"device_rssi"] intValue] : kUnreadableRSSI];
+
+            [pairedDevices addObject:mockDevice];
+          }
+        }
+      }
+
+      // Process not connected devices
+      NSArray *notConnectedDevices = bluetoothItem[@"device_not_connected"];
+      if (notConnectedDevices) {
+        for (NSDictionary *deviceDict in notConnectedDevices) {
+          for (NSString *deviceName in deviceDict) {
+            NSDictionary *deviceInfo = deviceDict[deviceName];
+            MockBluetoothDevice *mockDevice =
+              [[MockBluetoothDevice alloc] initWithAddress:deviceInfo[@"device_address"] ?: @""
+                                                      name:deviceName
+                                                 connected:NO
+                                          recentAccessDate:NULL
+                                                      rssi:kUnreadableRSSI];  // Not connected, so no RSSI
+
+            [pairedDevices addObject:mockDevice];
+          }
+        }
+      }
+    }
+  }
+
+  return [pairedDevices copy];
 }
 
 IOBluetoothDevice *get_device(char *id) {
@@ -854,6 +925,10 @@ void add_cmd(void *args, cmd cmd) {
 
 FormatterFunc list_devices = list_devices_default;
 bool use_subprocess_method = false;
+
+NSArray *get_paired_devices() {
+  return use_subprocess_method ? get_paired_devices_subprocess() : [IOBluetoothDevice pairedDevices];
+}
 
 int main(int argc, char *argv[]) {
   signal(SIGABRT, handle_abort);
@@ -1411,79 +1486,4 @@ int main(int argc, char *argv[]) {
   free(cmds);
 
   return EXIT_SUCCESS;
-}
-
-NSArray *get_paired_devices_subprocess() {
-  NSTask *task = [[NSTask alloc] init];
-  task.launchPath = @"/usr/sbin/system_profiler";
-  task.arguments = @[@"SPBluetoothDataType", @"-xml"];
-
-  NSPipe *pipe = [NSPipe pipe];
-  task.standardOutput = pipe;
-  task.standardError = [NSPipe pipe];
-
-  [task launch];
-  [task waitUntilExit];
-
-  NSData *data = [[pipe fileHandleForReading] readDataToEndOfFile];
-  if (task.terminationStatus != 0 || data.length == 0) {
-    return @[];
-  }
-
-  NSError *error = nil;
-  NSArray *plist = [NSPropertyListSerialization propertyListWithData:data
-                                                             options:NSPropertyListImmutable
-                                                              format:nil
-                                                               error:&error];
-  if (error || !plist || plist.count == 0) {
-    return @[];
-  }
-
-  NSMutableArray *pairedDevices = [NSMutableArray array];
-
-  // Navigate the system_profiler XML structure to find paired devices
-  for (NSDictionary *item in plist) {
-    NSArray *items = item[@"_items"];
-    if (!items) continue;
-
-    for (NSDictionary *bluetoothItem in items) {
-      // Process connected devices
-      NSArray *connectedDevices = bluetoothItem[@"device_connected"];
-      if (connectedDevices) {
-        for (NSDictionary *deviceDict in connectedDevices) {
-          for (NSString *deviceName in deviceDict) {
-            NSDictionary *deviceInfo = deviceDict[deviceName];
-            MockBluetoothDevice *mockDevice = [[MockBluetoothDevice alloc]
-               initWithAddress:deviceInfo[@"device_address"] ?: @""
-                          name:deviceName
-                     connected:YES
-              recentAccessDate:NULL
-                          rssi:deviceInfo[@"device_rssi"] ? [deviceInfo[@"device_rssi"] intValue] : kUnreadableRSSI];
-
-            [pairedDevices addObject:mockDevice];
-          }
-        }
-      }
-
-      // Process not connected devices
-      NSArray *notConnectedDevices = bluetoothItem[@"device_not_connected"];
-      if (notConnectedDevices) {
-        for (NSDictionary *deviceDict in notConnectedDevices) {
-          for (NSString *deviceName in deviceDict) {
-            NSDictionary *deviceInfo = deviceDict[deviceName];
-            MockBluetoothDevice *mockDevice =
-              [[MockBluetoothDevice alloc] initWithAddress:deviceInfo[@"device_address"] ?: @""
-                                                      name:deviceName
-                                                 connected:NO
-                                          recentAccessDate:NULL
-                                                      rssi:kUnreadableRSSI];  // Not connected, so no RSSI
-
-            [pairedDevices addObject:mockDevice];
-          }
-        }
-      }
-    }
-  }
-
-  return [pairedDevices copy];
 }
