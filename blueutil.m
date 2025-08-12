@@ -69,10 +69,7 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
                       connected:(BOOL)connected
                        favorite:(BOOL)favorite
                            rssi:(char)rssi;
-- (instancetype)initWithAddress:(NSString *)address
-                           name:(NSString *)name
-                      connected:(BOOL)connected
-                           rssi:(char)rssi;
+- (instancetype)initWithAddress:(NSString *)address name:(NSString *)name connected:(BOOL)connected rssi:(char)rssi;
 - (NSString *)addressString;
 - (BOOL)isConnected;
 - (BOOL)isPaired;
@@ -102,10 +99,7 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
   return self;
 }
 
-- (instancetype)initWithAddress:(NSString *)address
-                           name:(NSString *)name
-                      connected:(BOOL)connected
-                           rssi:(char)rssi {
+- (instancetype)initWithAddress:(NSString *)address name:(NSString *)name connected:(BOOL)connected rssi:(char)rssi {
   return [self initWithAddress:address
                           name:name
                         paired:YES  // Default: always paired when using system_profiler method
@@ -458,10 +452,10 @@ NSArray *get_paired_devices_subprocess() {
           for (NSString *deviceName in deviceDict) {
             NSDictionary *deviceInfo = deviceDict[deviceName];
             MockBluetoothDevice *mockDevice = [[MockBluetoothDevice alloc]
-               initWithAddress:deviceInfo[@"device_address"] ?: @""
-                          name:deviceName
-                     connected:YES
-                          rssi:deviceInfo[@"device_rssi"] ? [deviceInfo[@"device_rssi"] intValue] : kUnreadableRSSI];
+              initWithAddress:deviceInfo[@"device_address"] ?: @""
+                         name:deviceName
+                    connected:YES
+                         rssi:deviceInfo[@"device_rssi"] ? [deviceInfo[@"device_rssi"] intValue] : kUnreadableRSSI];
 
             [pairedDevices addObject:mockDevice];
           }
