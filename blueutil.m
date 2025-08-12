@@ -421,7 +421,6 @@ NSArray *get_paired_devices_subprocess() {
 
   NSPipe *pipe = [NSPipe pipe];
   task.standardOutput = pipe;
-  task.standardError = [NSPipe pipe];
 
   [task launch];
   [task waitUntilExit];
