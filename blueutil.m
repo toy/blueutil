@@ -21,7 +21,7 @@
 
 #define eprintf(...) fprintf(stderr, ##__VA_ARGS__)
 
-static const char kUnreadableRSSI = (char)-129;  // Value when RSSI cannot be read, matches IOBluetooth API
+static const char kUnreadableRSSI = 127;  // Value when RSSI cannot be read, matches IOBluetooth API
 
 void *assert_alloc(void *pointer) {
   if (pointer == NULL) {
@@ -61,7 +61,7 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
 @property (nonatomic, assign, readonly) BOOL connected;
 @property (nonatomic, assign, readonly) BOOL favorite;
 @property (nonatomic, strong, readonly) NSDate *recentAccessDate;
-@property (nonatomic, assign, readonly) int rssi;
+@property (nonatomic, assign, readonly) char rssi;
 @property (nonatomic, strong, readonly) IOBluetoothDevice *realDevice;
 - (instancetype)initWithAddress:(NSString *)address
                            name:(NSString *)name
@@ -69,12 +69,12 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
                       connected:(BOOL)connected
                        favorite:(BOOL)favorite
                recentAccessDate:(NSDate *)recentAccessDate
-                           rssi:(int)rssi;
+                           rssi:(char)rssi;
 - (instancetype)initWithAddress:(NSString *)address
                            name:(NSString *)name
                       connected:(BOOL)connected
                recentAccessDate:(NSDate *)recentAccessDate
-                           rssi:(int)rssi;
+                           rssi:(char)rssi;
 - (NSString *)addressString;
 - (BOOL)isConnected;
 - (BOOL)isPaired;
@@ -91,7 +91,7 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
                       connected:(BOOL)connected
                        favorite:(BOOL)favorite
                recentAccessDate:(NSDate *)recentAccessDate
-                           rssi:(int)rssi {
+                           rssi:(char)rssi {
   if (self = [super init]) {
     _address = address;
     _name = name;
@@ -109,7 +109,7 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
                            name:(NSString *)name
                       connected:(BOOL)connected
                recentAccessDate:(NSDate *)recentAccessDate
-                           rssi:(int)rssi {
+                           rssi:(char)rssi {
   return [self initWithAddress:address
                           name:name
                         paired:YES  // Default: always paired when using system_profiler method
@@ -255,7 +255,6 @@ void usage(FILE *io) {
     "                              remove from favourites; does nothing starting with macOS 12/Monterey",
     "",
     "        --format FORMAT       change output format of info and all listing commands",
-    "",
     "",
     "        --wait-connect ID [TIMEOUT]",
     "                              EXPERIMENTAL wait for device to connect",
