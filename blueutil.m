@@ -426,7 +426,11 @@ NSArray *get_paired_devices_subprocess() {
   [task waitUntilExit];
 
   NSData *data = [[pipe fileHandleForReading] readDataToEndOfFile];
-  if (task.terminationStatus != 0 || data.length == 0) {
+  if (task.terminationStatus != 0) {
+    eprintf("system_profiler failed with exit code %d\n", task.terminationStatus);
+    exit(EX_SOFTWARE);
+  }
+  if (data.length == 0) {
     return @[];
   }
 
