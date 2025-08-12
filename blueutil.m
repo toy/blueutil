@@ -68,12 +68,10 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
                          paired:(BOOL)paired
                       connected:(BOOL)connected
                        favorite:(BOOL)favorite
-               recentAccessDate:(NSDate *)recentAccessDate
                            rssi:(char)rssi;
 - (instancetype)initWithAddress:(NSString *)address
                            name:(NSString *)name
                       connected:(BOOL)connected
-               recentAccessDate:(NSDate *)recentAccessDate
                            rssi:(char)rssi;
 - (NSString *)addressString;
 - (BOOL)isConnected;
@@ -90,7 +88,6 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
                          paired:(BOOL)paired
                       connected:(BOOL)connected
                        favorite:(BOOL)favorite
-               recentAccessDate:(NSDate *)recentAccessDate
                            rssi:(char)rssi {
   if (self = [super init]) {
     _address = address;
@@ -98,7 +95,7 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
     _paired = paired;
     _connected = connected;
     _favorite = favorite;
-    _recentAccessDate = recentAccessDate;
+    _recentAccessDate = NULL;
     _rssi = rssi;
     _realDevice = [IOBluetoothDevice deviceWithAddressString:address];
   }
@@ -108,14 +105,12 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
 - (instancetype)initWithAddress:(NSString *)address
                            name:(NSString *)name
                       connected:(BOOL)connected
-               recentAccessDate:(NSDate *)recentAccessDate
                            rssi:(char)rssi {
   return [self initWithAddress:address
                           name:name
                         paired:YES  // Default: always paired when using system_profiler method
                      connected:connected
                       favorite:NO  // Default: always NO for system_profiler method
-              recentAccessDate:recentAccessDate
                           rssi:rssi];
 }
 
@@ -463,7 +458,6 @@ NSArray *get_paired_devices_subprocess() {
                initWithAddress:deviceInfo[@"device_address"] ?: @""
                           name:deviceName
                      connected:YES
-              recentAccessDate:NULL
                           rssi:deviceInfo[@"device_rssi"] ? [deviceInfo[@"device_rssi"] intValue] : kUnreadableRSSI];
 
             [pairedDevices addObject:mockDevice];
@@ -481,7 +475,6 @@ NSArray *get_paired_devices_subprocess() {
               [[MockBluetoothDevice alloc] initWithAddress:deviceInfo[@"device_address"] ?: @""
                                                       name:deviceName
                                                  connected:NO
-                                          recentAccessDate:NULL
                                                       rssi:kUnreadableRSSI];  // Not connected, so no RSSI
 
             [pairedDevices addObject:mockDevice];
