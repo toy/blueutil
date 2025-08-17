@@ -124,10 +124,10 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
   return NO;
 }  // Default to master mode
 - (char)RSSI {
-  return (char)self.rssi;
+  return self.rssi;
 }
 - (char)rawRSSI {
-  return (char)self.rssi;
+  return self.rssi;
 }
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
@@ -152,7 +152,6 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
 @end
 
 // forward declarations
-NSArray *get_paired_devices_subprocess();
 NSArray *get_paired_devices();
 
 // short names
@@ -419,11 +418,12 @@ NSArray *get_paired_devices_subprocess() {
   [task launch];
   [task waitUntilExit];
 
-  NSData *data = [[pipe fileHandleForReading] readDataToEndOfFile];
   if (task.terminationStatus != 0) {
     eprintf("system_profiler failed with exit code %d\n", task.terminationStatus);
     exit(EX_SOFTWARE);
   }
+
+  NSData *data = [[pipe fileHandleForReading] readDataToEndOfFile];
   if (data.length == 0) {
     return @[];
   }

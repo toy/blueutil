@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* Experimental alternative method of fetching paired devices using system_profiler [#101](https://github.com/toy/blueutil/pull/101) [@arcaartem](https://github.com/arcaartem)
+
 ## v2.12.0 (2025-02-02)
 
 * Hide debug log messages from IOBluetoothDeviceInquiry [@toy](https://github.com/toy)
