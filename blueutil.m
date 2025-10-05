@@ -1183,6 +1183,11 @@ int main(int argc, char *argv[]) {
           @autoreleasepool {
             IOBluetoothDevice *device = get_device(args->device_id);
 
+            if (![device isConnected]) {
+              eprintf("Device not connected \"%s\"\n", args->device_id);
+              return EXIT_SUCCESS;
+            }
+
             DeviceNotificationRunLoopStopper *stopper =
               [[[DeviceNotificationRunLoopStopper alloc] initWithExpectedDevice:device] autorelease];
 

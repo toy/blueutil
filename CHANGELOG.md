@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* Check connected state before trying to disconnect to prevent hang for unknown devices (e.g., mistyped address) [#103](https://github.com/toy/blueutil/issues/103) [@toy](https://github.com/toy)
+
 ## v2.13.0 (2025-08-18)
 
 * Experimental alternative method of fetching paired devices using system_profiler [#101](https://github.com/toy/blueutil/pull/101) [@arcaartem](https://github.com/arcaartem)
