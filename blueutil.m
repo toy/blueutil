@@ -367,6 +367,19 @@ bool check_device_address_arg(char *arg) {
   return result == 0;
 }
 
+// Workaround: deviceWithAddressString: rejects some valid case/separator
+// combinations; colon-separated lowercase always parses.
+NSString *canonical_device_address(NSString *address) {
+  NSString *hex = [address stringByReplacingOccurrencesOfString:@"-" withString:@""];
+  hex = [hex stringByReplacingOccurrencesOfString:@":" withString:@""];
+  hex = [hex lowercaseString];
+  NSMutableArray *parts = [NSMutableArray arrayWithCapacity:6];
+  for (NSUInteger i = 0; i + 2 <= hex.length; i += 2) {
+    [parts addObject:[hex substringWithRange:NSMakeRange(i, 2)]];
+  }
+  return [parts componentsJoinedByString:@":"];
+}
+
 bool parse_unsigned_long_arg(char *arg, unsigned long *number) {
   regex_t regex;
   int result;
@@ -490,7 +503,7 @@ IOBluetoothDevice *get_device(char *id) {
   IOBluetoothDevice *device = nil;
 
   if (check_device_address_arg(id)) {
-    device = [IOBluetoothDevice deviceWithAddressString:nsId];
+    device = [IOBluetoothDevice deviceWithAddressString:canonical_device_address(nsId)];
 
     if (!device) {
       eprintf("Device not found by address: %s\n", id);
