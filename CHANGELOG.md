@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## v2.14.0 (2026-09-10)
+
 * Check connected state before trying to disconnect to prevent hang for unknown devices (e.g., mistyped address) [#103](https://github.com/toy/blueutil/issues/103) [@toy](https://github.com/toy)
 
 ## v2.13.0 (2025-08-18)
