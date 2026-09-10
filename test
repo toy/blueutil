@@ -97,6 +97,22 @@ assert_eq "$($blueutil)" $'Power: 1\nDiscoverable: 0'
 $blueutil -pOFF -doFF
 assert_eq "$($blueutil)" $'Power: 0\nDiscoverable: 0'
 
+# Address canonicalisation: every case/separator combination of a paired
+# device's address must resolve via --info. Skipped when no paired device.
+sample_address=$($blueutil --paired --format default 2> /dev/null | head -n1 | awk '{print $2}' | tr -d ',')
+if [[ -n $sample_address ]]; then
+  hex=$(echo "$sample_address" | tr -d ':-')
+  for variant in \
+    "$(echo "$hex" | tr 'A-F' 'a-f')" \
+    "$(echo "$hex" | tr 'a-f' 'A-F')" \
+    "$(echo "$hex" | sed 's/../&:/g; s/:$//' | tr 'A-F' 'a-f')" \
+    "$(echo "$hex" | sed 's/../&:/g; s/:$//' | tr 'a-f' 'A-F')" \
+    "$(echo "$hex" | sed 's/../&-/g; s/-$//' | tr 'A-F' 'a-f')" \
+    "$(echo "$hex" | sed 's/../&-/g; s/-$//' | tr 'a-f' 'A-F')"; do
+    assert_match "$($blueutil --info "$variant" 2>&1)" 'address: '
+  done
+fi
+
 # Help
 assert_eq "$($blueutil --help)" *'this help'*
 assert_eq "$($blueutil -h)"     *'this help'*
