@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wextra -Werror -mmacosx-version-min=10.9 -framework Foundation -framework IOBluetooth
+CFLAGS = -Wall -Wextra -Werror -mmacosx-version-min=10.9 -framework Foundation -framework IOBluetooth -framework CoreBluetooth
 
 DESTDIR =
 prefix = /usr/local

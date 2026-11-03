@@ -11,6 +11,7 @@
 #define VERSION "2.14.0"
 
 #import <IOBluetooth/IOBluetooth.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 
 #include <getopt.h>
 #include <regex.h>
@@ -52,6 +53,11 @@ int IOBluetoothPreferenceGetDiscoverableState();
 void IOBluetoothPreferenceSetDiscoverableState(int state);
 
 void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
+
+// Private bridge used by IOBluetooth itself for BLE devices on recent macOS.
+@interface IOBluetoothDevice (BLEBridge)
++ (instancetype)deviceWithCBPeripheral:(CBPeripheral *)peripheral;
+@end
 
 // Mock IOBluetoothDevice for subprocess method
 @interface MockBluetoothDevice : NSObject
@@ -151,8 +157,27 @@ void _NSSetLogCStringFunction(void (*)(const char *, unsigned, BOOL));
 }
 @end
 
+// BLE advertisements have CoreBluetooth UUIDs, not Bluetooth addresses or pairing information.
+@interface BLEInquiryDevice : NSObject
+@property (nonatomic, copy) NSString *uuid;
+@property (nonatomic, copy) NSString *name;
+@property (nonatomic, retain) NSNumber *rssi;
+@property (nonatomic, assign) BOOL connectable;
+@end
+
+@implementation BLEInquiryDevice
+- (void)dealloc {
+  [_uuid release];
+  [_name release];
+  [_rssi release];
+  [super dealloc];
+}
+@end
+
 // forward declarations
 NSArray *get_paired_devices();
+IOBluetoothDevice *get_ble_device(NSString *uuid);
+int connect_ble_device(NSString *uuid, long timeout);
 
 // short names
 typedef int (*GetterFunc)();
@@ -197,6 +222,17 @@ void check_power_on_for(const char *command) {
   eprintf("Power is required to be on for %s command\n", command);
 }
 
+bool check_bluetooth_access() {
+  if (@available(macOS 10.15, *)) {
+    if (CBManager.authorization == CBManagerAuthorizationDenied ||
+      CBManager.authorization == CBManagerAuthorizationRestricted) {
+      eprintf("Bluetooth access denied. Enable Bluetooth permission for the application running blueutil.\n");
+      return false;
+    }
+  }
+  return true;
+}
+
 const char *filter_out_ns_log[] = {
   "-[IOBluetoothDeviceInquiry initWithDelegate:]",
   "-[IOBluetoothDeviceInquiry dealloc]",
@@ -226,7 +262,7 @@ void usage(FILE *io) {
     "",
     "        --favourites, --favorites",
     "                              list favourite devices; returns empty list starting with macOS 12/Monterey",
-    "        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates",
+    "        --inquiry [T]         discover Classic and BLE devices in range, 10 seconds by default",
     "        --paired              list paired devices",
     "        --recent [N]          list recently used devices, 10 by default, 0 to list all; returns empty list starting with macOS 12/Monterey",
     "        --connected           list connected devices",
@@ -255,7 +291,7 @@ void usage(FILE *io) {
     "    -v, --version             show version",
     "",
     "STATE can be one of: 1, on, 0, off, toggle",
-    "ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in paired or recent devices",
+    "ID can be an address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, a BLE UUID from --inquiry, or the name of a device in the paired or recent lists",
     "OP can be one of: >, >=, <, <=, =, !=; or equivalents: gt, ge, lt, le, eq, ne",
     "PERIOD is in seconds, defaults to 1",
     "TIMEOUT is in seconds, default value 0 doesn't add timeout",
@@ -489,7 +525,9 @@ IOBluetoothDevice *get_device(char *id) {
 
   IOBluetoothDevice *device = nil;
 
-  if (check_device_address_arg(id)) {
+  if ([[[NSUUID alloc] initWithUUIDString:nsId] autorelease]) {
+    return get_ble_device(nsId);
+  } else if (check_device_address_arg(id)) {
     device = [IOBluetoothDevice deviceWithAddressString:nsId];
 
     if (!device) {
@@ -530,6 +568,16 @@ IOBluetoothDevice *get_device(char *id) {
 
 void list_devices_default(NSArray *devices, bool first_only) {
   for (IOBluetoothDevice *device in devices) {
+    if ([device isKindOfClass:[BLEInquiryDevice class]]) {
+      BLEInquiryDevice *ble = (BLEInquiryDevice *)device;
+      printf("uuid: %s, transport: BLE, RSSI: %s dBm, connectable: %s, name: \"%s\"\n",
+        [ble.uuid UTF8String],
+        [ble.rssi.description UTF8String],
+        ble.connectable ? "yes" : "no",
+        ble.name ? [ble.name UTF8String] : "-");
+      if (first_only) break;
+      continue;
+    }
     printf("address: %s", [[device addressString] UTF8String]);
     if ([device isConnected]) {
       printf(", connected (%s, %d dBm)", [device isIncoming] ? "slave" : "master", [device rawRSSI]);
@@ -549,6 +597,20 @@ void list_devices_default(NSArray *devices, bool first_only) {
 void list_devices_new_default(NSArray *devices, bool first_only) {
   const char *separator = first_only ? "\n" : ", ";
   for (IOBluetoothDevice *device in devices) {
+    if ([device isKindOfClass:[BLEInquiryDevice class]]) {
+      BLEInquiryDevice *ble = (BLEInquiryDevice *)device;
+      printf("uuid: %s%stransport: BLE%srssi: %s%sconnectable: %s%sname: %s\n",
+        [ble.uuid UTF8String],
+        separator,
+        separator,
+        [ble.rssi.description UTF8String],
+        separator,
+        ble.connectable ? "yes" : "no",
+        separator,
+        ble.name ? [ble.name UTF8String] : "-");
+      if (first_only) break;
+      continue;
+    }
     printf("address: %s%s", [[device addressString] UTF8String], separator);
     printf("recent access: %s%s",
       [device recentAccessDate] ? [[[device recentAccessDate] description] UTF8String] : "-",
@@ -578,6 +640,17 @@ void list_devices_json(NSArray *devices, bool first_only, bool pretty) {
     [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ssZZZZZ"];
 
     for (IOBluetoothDevice *device in devices) {
+      if ([device isKindOfClass:[BLEInquiryDevice class]]) {
+        BLEInquiryDevice *ble = (BLEInquiryDevice *)device;
+        [descriptions addObject:@{
+          @"uuid": ble.uuid,
+          @"transport": @"BLE",
+          @"name": ble.name ?: (id)[NSNull null],
+          @"RSSI": ble.rssi,
+          @"connectable": @(ble.connectable),
+        }];
+        continue;
+      }
       NSMutableDictionary *description = [NSMutableDictionary dictionaryWithDictionary:@{
         @"address": [device addressString],
         @"name": [device name] ? [device name] : [NSNull null],
@@ -643,15 +716,255 @@ bool parse_output_formatter(char *arg, FormatterFunc *formatter) {
   return false;
 }
 
-@interface DeviceInquiryRunLoopStopper : NSObject <IOBluetoothDeviceInquiryDelegate>
+@interface DeviceInquiryDelegate : NSObject <IOBluetoothDeviceInquiryDelegate, CBCentralManagerDelegate>
+@property (nonatomic, retain) NSMutableDictionary *bleDevices;
+@property (nonatomic, assign) IOReturn classicError;
+@property (nonatomic, assign) BOOL classicComplete;
+@property (nonatomic, assign) int bleError;
+@property (nonatomic, assign) BOOL bleReady;
 @end
-@implementation DeviceInquiryRunLoopStopper
+@implementation DeviceInquiryDelegate
+- (id)init {
+  if ((self = [super init])) self.bleDevices = [NSMutableDictionary dictionary];
+  return self;
+}
+- (void)dealloc {
+  [_bleDevices release];
+  [super dealloc];
+}
 - (void)deviceInquiryComplete:(__unused IOBluetoothDeviceInquiry *)sender
-                        error:(__unused IOReturn)error
+                        error:(IOReturn)error
                       aborted:(__unused BOOL)aborted {
-  CFRunLoopStop(CFRunLoopGetCurrent());
+  self.classicComplete = YES;
+  self.classicError = error;
+  if (error != kIOReturnSuccess) eprintf("Classic inquiry failed with error 0x%08x\n", error);
+  // BLE must keep scanning for the requested duration even if Classic finishes earlier.
+}
+- (void)centralManagerDidUpdateState:(CBCentralManager *)central {
+  switch (central.state) {
+    case CBManagerStatePoweredOn:
+      self.bleReady = YES;
+      self.bleError = EXIT_SUCCESS;
+      [central scanForPeripheralsWithServices:nil options:nil];
+      break;
+    case CBManagerStateUnsupported:
+      self.bleReady = YES;  // Keep Classic discovery on controllers without BLE support.
+      break;
+    case CBManagerStateUnauthorized:
+      self.bleError = EX_UNAVAILABLE;
+      eprintf("Bluetooth access denied. Enable Bluetooth permission for the application running blueutil.\n");
+      break;
+    case CBManagerStatePoweredOff:
+      self.bleError = EX_UNAVAILABLE;
+      eprintf("Bluetooth is powered off; BLE inquiry is unavailable.\n");
+      break;
+    default:
+      break;  // Wait for a usable state or the inquiry deadline.
+  }
+}
+- (void)centralManager:(__unused CBCentralManager *)central
+  didDiscoverPeripheral:(CBPeripheral *)peripheral
+      advertisementData:(NSDictionary *)advertisementData
+                   RSSI:(NSNumber *)RSSI {
+  if (@available(macOS 10.13, *)) {
+    NSString *uuid = peripheral.identifier.UUIDString;
+    BLEInquiryDevice *device = self.bleDevices[uuid];
+    if (!device) {
+      device = [[[BLEInquiryDevice alloc] init] autorelease];
+      device.uuid = uuid;
+      self.bleDevices[uuid] = device;
+    }
+    NSString *name = advertisementData[CBAdvertisementDataLocalNameKey] ?: peripheral.name;
+    if (name) device.name = name;
+    device.rssi = RSSI;
+    device.connectable = [advertisementData[CBAdvertisementDataIsConnectable] boolValue];
+  }
 }
 @end
+
+@interface BLEDeviceResolver : NSObject <CBCentralManagerDelegate>
+@property (nonatomic, copy) NSUUID *uuid;
+@property (nonatomic, retain) IOBluetoothDevice *device;
+@property (nonatomic, assign) int status;
+@end
+
+@implementation BLEDeviceResolver
+- (void)dealloc {
+  [_uuid release];
+  [_device release];
+  [super dealloc];
+}
+- (void)centralManagerDidUpdateState:(CBCentralManager *)central {
+  if (@available(macOS 10.13, *)) {
+    switch (central.state) {
+      case CBManagerStatePoweredOn: {
+        CBPeripheral *peripheral = [[central retrievePeripheralsWithIdentifiers:@[self.uuid]] firstObject];
+        if (!peripheral) {
+          eprintf("BLE device not found: %s. Run --inquiry while the device is in pairing mode.\n",
+            [self.uuid.UUIDString UTF8String]);
+          self.status = EXIT_FAILURE;
+        } else {
+          self.device = [IOBluetoothDevice deviceWithCBPeripheral:peripheral];
+          self.status = self.device ? EXIT_SUCCESS : EXIT_FAILURE;
+          if (!self.device) eprintf("Failed to resolve BLE device: %s\n", [self.uuid.UUIDString UTF8String]);
+        }
+      } break;
+      case CBManagerStateUnauthorized:
+        eprintf("Bluetooth access denied. Enable Bluetooth permission for the application running blueutil.\n");
+        self.status = EX_UNAVAILABLE;
+        break;
+      case CBManagerStatePoweredOff:
+      case CBManagerStateUnsupported:
+        eprintf("Bluetooth Low Energy is unavailable.\n");
+        self.status = EX_UNAVAILABLE;
+        break;
+      default:
+        return;
+    }
+    CFRunLoopStop(CFRunLoopGetMain());
+  }
+}
+@end
+
+// Connects to a BLE peripheral through CoreBluetooth. macOS pairs (bonds) the peripheral
+// automatically during the connection when it requires security, so this also serves
+// --pair for BLE UUIDs. The device must be advertising, so put it in pairing mode first.
+@interface BLEConnector : NSObject <CBCentralManagerDelegate>
+@property (nonatomic, copy) NSUUID *uuid;
+@property (nonatomic, retain) CBPeripheral *peripheral;
+@property (nonatomic, assign) int status;
+@end
+
+@implementation BLEConnector
+- (void)dealloc {
+  [_uuid release];
+  [_peripheral release];
+  [super dealloc];
+}
+- (void)centralManagerDidUpdateState:(CBCentralManager *)central {
+  if (@available(macOS 10.13, *)) {
+    switch (central.state) {
+      case CBManagerStatePoweredOn: {
+        CBPeripheral *peripheral = [[central retrievePeripheralsWithIdentifiers:@[self.uuid]] firstObject];
+        if (peripheral && peripheral.state == CBPeripheralStateConnected) {
+          self.status = EXIT_SUCCESS;
+          CFRunLoopStop(CFRunLoopGetMain());
+          break;
+        }
+        // Devices that rotate their advertised address get a new UUID each time they
+        // enter pairing mode, so scan for a live advertisement.
+        [central scanForPeripheralsWithServices:nil options:nil];
+      } break;
+      case CBManagerStateUnauthorized:
+        eprintf("Bluetooth access denied. Enable Bluetooth permission for the application running blueutil.\n");
+        self.status = EX_UNAVAILABLE;
+        CFRunLoopStop(CFRunLoopGetMain());
+        break;
+      case CBManagerStatePoweredOff:
+      case CBManagerStateUnsupported:
+        eprintf("Bluetooth Low Energy is unavailable.\n");
+        self.status = EX_UNAVAILABLE;
+        CFRunLoopStop(CFRunLoopGetMain());
+        break;
+      default:
+        break;  // Wait for a usable state or the deadline.
+    }
+  }
+}
+- (void)centralManager:(CBCentralManager *)central
+  didDiscoverPeripheral:(CBPeripheral *)peripheral
+      advertisementData:(NSDictionary *)advertisementData
+                   RSSI:(__unused NSNumber *)RSSI {
+  if (@available(macOS 10.13, *)) {
+    if ([peripheral.identifier.UUIDString isEqualToString:self.uuid.UUIDString]) {
+      // CoreBluetooth cancels connections to peripherals nothing references.
+      self.peripheral = peripheral;
+      eprintf("Connecting to BLE device %s\n", [peripheral.identifier.UUIDString UTF8String]);
+      [central stopScan];
+      [central connectPeripheral:peripheral options:nil];
+    }
+  }
+}
+- (void)centralManager:(__unused CBCentralManager *)central
+  didConnectPeripheral:(__unused CBPeripheral *)peripheral {
+  self.status = EXIT_SUCCESS;
+  // Keep the central and the peripheral alive briefly so the OS can finish pairing
+  // (bonding) before blueutil exits and its connection is torn down.
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC),
+    dispatch_get_main_queue(),
+    ^{ CFRunLoopStop(CFRunLoopGetMain()); });
+}
+- (void)centralManager:(__unused CBCentralManager *)central
+  didFailToConnectPeripheral:(CBPeripheral *)peripheral
+                       error:(NSError *)error {
+  if (@available(macOS 10.13, *)) {
+    eprintf("Failed to connect BLE device %s: %s\n",
+      [peripheral.identifier.UUIDString UTF8String],
+      [error.localizedDescription UTF8String]);
+  }
+  self.status = EXIT_FAILURE;
+  CFRunLoopStop(CFRunLoopGetMain());
+}
+@end
+
+int connect_ble_device(NSString *target, long timeout) {
+  if (!check_bluetooth_access()) return EX_UNAVAILABLE;
+  if (@available(macOS 10.13, *)) {
+    BLEConnector *connector = [[[BLEConnector alloc] init] autorelease];
+    connector.uuid = [[[NSUUID alloc] initWithUUIDString:target] autorelease];
+    connector.status = EX_TEMPFAIL;
+    CBCentralManager *central = [[[CBCentralManager alloc] initWithDelegate:connector
+      queue:dispatch_get_main_queue()
+      options:@{CBCentralManagerOptionShowPowerAlertKey: @(NO)}] autorelease];
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault,
+      CFAbsoluteTimeGetCurrent() + timeout, 0, 0, 0,
+      ^(__unused CFRunLoopTimerRef timer) {
+        eprintf("Timed out connecting BLE device: %s. Make sure it is in pairing mode.\n",
+          [target UTF8String]);
+        CFRunLoopStop(CFRunLoopGetMain());
+      });
+    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopDefaultMode);
+    CFRunLoopRun();
+    CFRunLoopTimerInvalidate(timer);
+    CFRelease(timer);
+    if (central.state == CBManagerStatePoweredOn) [central stopScan];
+    central.delegate = nil;
+    return connector.status;
+  }
+  eprintf("BLE devices require macOS 10.13 or later.\n");
+  return EX_UNAVAILABLE;
+}
+
+IOBluetoothDevice *get_ble_device(NSString *uuid) {
+  if (!check_bluetooth_access()) exit(EX_UNAVAILABLE);
+  if (@available(macOS 10.13, *)) {
+    if (![IOBluetoothDevice respondsToSelector:@selector(deviceWithCBPeripheral:)]) {
+      eprintf("This macOS version does not provide the IOBluetooth BLE bridge.\n");
+      exit(EX_UNAVAILABLE);
+    }
+    BLEDeviceResolver *resolver = [[[BLEDeviceResolver alloc] init] autorelease];
+    resolver.uuid = [[[NSUUID alloc] initWithUUIDString:uuid] autorelease];
+    resolver.status = EX_TEMPFAIL;
+    CBCentralManager *central = [[[CBCentralManager alloc] initWithDelegate:resolver
+      queue:dispatch_get_main_queue()
+      options:@{CBCentralManagerOptionShowPowerAlertKey: @(NO)}] autorelease];
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault,
+      CFAbsoluteTimeGetCurrent() + 10, 0, 0, 0,
+      ^(__unused CFRunLoopTimerRef timer) {
+        eprintf("Timed out resolving BLE device: %s\n", [uuid UTF8String]);
+        CFRunLoopStop(CFRunLoopGetMain());
+      });
+    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopDefaultMode);
+    CFRunLoopRun();
+    CFRunLoopTimerInvalidate(timer);
+    CFRelease(timer);
+    central.delegate = nil;
+    if (resolver.status != EXIT_SUCCESS) exit(resolver.status);
+    return resolver.device;
+  }
+  eprintf("BLE UUIDs require macOS 10.13 or later.\n");
+  exit(EX_UNAVAILABLE);
+}
 
 static inline bool is_caseabbr(const char *name, const char *str) {
   size_t length = strlen(str);
@@ -1076,24 +1389,55 @@ int main(int argc, char *argv[]) {
         add_cmd(args, ^int(void *_args) {
           struct args_inquiry *args = (struct args_inquiry *)_args;
 
-          check_power_on_for("inquiry");
-
           @autoreleasepool {
-            DeviceInquiryRunLoopStopper *stopper = [[[DeviceInquiryRunLoopStopper alloc] init] autorelease];
-            IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:stopper];
+            if (!check_bluetooth_access()) return EX_UNAVAILABLE;
+            check_power_on_for("inquiry");
 
-            [inquirer start];
+            DeviceInquiryDelegate *delegate = [[[DeviceInquiryDelegate alloc] init] autorelease];
+            IOBluetoothDeviceInquiry *inquirer = [IOBluetoothDeviceInquiry inquiryWithDelegate:delegate];
+            CBCentralManager *central = nil;
+            if (@available(macOS 10.13, *)) {
+              central = [[[CBCentralManager alloc] initWithDelegate:delegate
+                queue:dispatch_get_main_queue()
+                options:@{CBCentralManagerOptionShowPowerAlertKey: @(NO)}] autorelease];
+            } else {
+              delegate.bleReady = YES;
+            }
 
-            // inquiry length seems to be ingored starting with Monterey
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, args->duration * NSEC_PER_SEC),
-              dispatch_get_main_queue(),
-              ^{
-                [inquirer stop];
+            delegate.classicError = [inquirer start];
+            if (delegate.classicError != kIOReturnSuccess) {
+              delegate.classicComplete = YES;
+              eprintf("Failed to start Classic inquiry with error 0x%08x\n", delegate.classicError);
+            }
+
+            // A run-loop timer also keeps the loop alive while the Bluetooth APIs initialize.
+            CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault,
+              CFAbsoluteTimeGetCurrent() + args->duration, 0, 0, 0,
+              ^(__unused CFRunLoopTimerRef timer) {
+                if (@available(macOS 10.13, *)) {
+                  if (delegate.bleReady && central.state == CBManagerStatePoweredOn) [central stopScan];
+                }
+                if (!delegate.classicComplete) [inquirer stop];
+                CFRunLoopStop(CFRunLoopGetMain());
               });
-
+            CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopDefaultMode);
             CFRunLoopRun();
+            CFRunLoopTimerInvalidate(timer);
+            CFRelease(timer);
+            central.delegate = nil;
+            inquirer.delegate = nil;
 
-            list_devices([inquirer foundDevices], false);
+            NSMutableArray *devices = [NSMutableArray arrayWithArray:[inquirer foundDevices]];
+            NSArray *uuids = [[delegate.bleDevices allKeys] sortedArrayUsingSelector:@selector(compare:)];
+            for (NSString *uuid in uuids) [devices addObject:delegate.bleDevices[uuid]];
+            list_devices(devices, false);
+
+            if (delegate.bleError) return delegate.bleError;
+            if (!delegate.bleReady) {
+              eprintf("BLE inquiry did not become ready before the deadline.\n");
+              return EX_UNAVAILABLE;
+            }
+            if (delegate.classicError != kIOReturnSuccess) return EXIT_FAILURE;
           }
 
           return EXIT_SUCCESS;
@@ -1161,6 +1505,11 @@ int main(int argc, char *argv[]) {
           struct args_device_id *args = (struct args_device_id *)_args;
 
           check_power_on_for("connect");
+
+          NSString *nsId = [NSString stringWithCString:args->device_id encoding:[NSString defaultCStringEncoding]];
+          if ([[[NSUUID alloc] initWithUUIDString:nsId] autorelease]) {
+            return connect_ble_device(nsId, 15);
+          }
 
           if ([get_device(args->device_id) openConnection] != kIOReturnSuccess) {
             eprintf("Failed to connect \"%s\"\n", args->device_id);
@@ -1255,6 +1604,13 @@ int main(int argc, char *argv[]) {
           check_power_on_for("pair");
 
           @autoreleasepool {
+            NSString *nsId = [NSString stringWithCString:args->device_id encoding:[NSString defaultCStringEncoding]];
+            if ([[[NSUUID alloc] initWithUUIDString:nsId] autorelease]) {
+              // BLE pairing happens implicitly when the OS connects to the peripheral,
+              // so connecting is pairing. Give the pairing request time to be answered.
+              return connect_ble_device(nsId, 120);
+            }
+
             IOBluetoothDevice *device = get_device(args->device_id);
             DevicePairDelegate *delegate = [[[DevicePairDelegate alloc] init] autorelease];
             IOBluetoothDevicePair *pairer = [IOBluetoothDevicePair pairWithDevice:device];
@@ -1295,6 +1651,10 @@ int main(int argc, char *argv[]) {
 #pragma clang diagnostic ignored "-Wundeclared-selector"
           if ([device respondsToSelector:@selector(remove)]) {
             [device performSelector:@selector(remove)];
+            // The shim sends the unpair request to bluetoothd over XPC. Exiting
+            // immediately invalidates the connection and aborts the request, so
+            // keep the process alive long enough for bluetoothd to finish.
+            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 2.0, false);
 #pragma clang diagnostic pop
             return EXIT_SUCCESS;
           } else {
