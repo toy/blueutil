@@ -2,6 +2,12 @@
 
 ## unreleased
 
+* Include Bluetooth Low Energy advertisements in `--inquiry` using CoreBluetooth, with UUIDs in all output formats.
+* Connect to and pair BLE devices from `--inquiry` through CoreBluetooth, with pairing performed by the OS during connection.
+* Resolve BLE UUIDs through the native IOBluetooth bridge for `--info` and other read-only device commands.
+* Keep the process alive briefly after `--unpair` so bluetoothd can finish processing the request.
+* Report Bluetooth permission and inquiry errors instead of silently returning an empty successful inquiry.
+
 ## v2.14.0 (2026-09-10)
 
 * Check connected state before trying to disconnect to prevent hang for unknown devices (e.g., mistyped address) [#103](https://github.com/toy/blueutil/issues/103) [@toy](https://github.com/toy)

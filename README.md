@@ -16,6 +16,49 @@ The system_profiler method resolves an issue where some multi-point Bluetooth de
 
 **Note:** The system_profiler method is experimental and may have compatibility issues with some blueutil commands.
 
+## Bluetooth Low Energy discovery
+
+`--inquiry` scans for both Bluetooth Classic and Bluetooth Low Energy (BLE) devices.
+BLE discovery uses CoreBluetooth on macOS 10.13 and later. Put the device in pairing
+mode so that it advertises, for example by holding Easy-Switch on an unused channel
+of a Logitech MX mouse for three seconds.
+
+Classic devices retain their existing output. BLE devices report `uuid`, `transport`
+(`BLE`), `name`, `RSSI`, and `connectable`, including in JSON output. BLE advertisements
+do not report pairing status. Use the UUID returned by discovery with device commands:
+
+```sh
+blueutil --inquiry --format json-pretty
+blueutil --pair <BLE-UUID>
+blueutil --connect <BLE-UUID>
+blueutil --info <BLE-UUID>
+```
+
+The device must still be advertising (in pairing mode) when `--pair` or `--connect`
+is run, so use a UUID from a fresh `--inquiry`. Devices that rotate their Bluetooth
+address for privacy (many keyboards and mice) get a **new UUID each time they enter
+pairing mode**, so run `--inquiry` again right before pairing.
+
+`--pair` and `--connect` both connect through CoreBluetooth; macOS performs BLE
+pairing automatically during the connection when the peripheral requires security,
+showing the system pairing request if needed. `--pair` allows two minutes for the
+request to be answered, `--connect` 15 seconds. `--info` resolves the UUID to an
+IOBluetooth device using a private framework bridge that is experimental and can
+change between macOS versions. Bluetooth addresses and paired device names remain
+supported as before.
+
+Once bonded, a BLE device also appears in `--paired` and `--connected` with a
+Bluetooth address, and supports the other device commands by name or address,
+including `--disconnect`. Note that macOS reconnects bonded HID devices (like
+keyboards) immediately after `--disconnect`.
+
+`--unpair` only removes Classic bonds: macOS does not expose any way for an
+application to remove a BLE bond, so use System Settings → Bluetooth →
+"Forget This Device" for BLE devices.
+
+The application running blueutil (such as your terminal) needs Bluetooth permission
+in System Settings. A denied permission now causes inquiry to return an error.
+
 ## Usage
 
 <!--USAGE[-->
@@ -32,7 +75,7 @@ Without options outputs current state
 
         --favourites, --favorites
                               list favourite devices; returns empty list starting with macOS 12/Monterey
-        --inquiry [T]         inquiry devices in range, 10 seconds duration by default excluding time for name updates
+        --inquiry [T]         discover Classic and BLE devices in range, 10 seconds by default
         --paired              list paired devices
         --recent [N]          list recently used devices, 10 by default, 0 to list all; returns empty list starting with macOS 12/Monterey
         --connected           list connected devices
@@ -61,7 +104,7 @@ Without options outputs current state
     -v, --version             show version
 
 STATE can be one of: 1, on, 0, off, toggle
-ID can be either address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, or name of device to search in paired or recent devices
+ID can be an address in form xxxxxxxxxxxx, xx-xx-xx-xx-xx-xx or xx:xx:xx:xx:xx:xx, a BLE UUID from --inquiry, or the name of a device in the paired or recent lists
 OP can be one of: >, >=, <, <=, =, !=; or equivalents: gt, ge, lt, le, eq, ne
 PERIOD is in seconds, defaults to 1
 TIMEOUT is in seconds, default value 0 doesn't add timeout
